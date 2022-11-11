@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SF_Tree_Identifier"
+version = "0.0.1"
+authors = [
+  { name="Zaven Cook", email="zavencook@gmail.com" },
+]
+description = "Get information about trees at specific addresses in San Francisco"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/zcook7904/SF_Tree_Identifier"
+"Bug Tracker" = "https://github.com/zcook7904/SF_Tree_Identifier/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]  # ["."] by default
+exclude = ["venv", "config.ini", "performance_log.csv"]
+
+[tool.setuptools.package-data]
+"SF_Tree_Identifier.data" = ["*.json", "*.pkl", "*.db"]
+
