@@ -1,6 +1,7 @@
 import unittest
 import os
 import sys
+import pandas as pd
 
 # adds python module to path
 path_to_append = os.path.join('.', 'src')
@@ -22,6 +23,12 @@ class SelecTreeFinderTestCase(unittest.TestCase):
     def test_bad_name(self):
         with self.assertRaises(IndexError):
             url_finder.selec_tree_number('bad_name_123')
+
+class AssignUrlTestCase(unittest.TestCase):
+    def test_url_assigned(self):
+        species = pd.Series(['Corymbia ficifolia :: Red Flowering Gum', 'bad name 123 :: worse name'], name='qSpecies', dtype='string')
+        assigned_species = url_finder.assign_url_paths(species)
+        self.assertTrue(assigned_species.iloc[0, 1] == 540)
 
 if __name__ == '__main__':
     unittest.main()
