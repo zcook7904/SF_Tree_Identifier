@@ -27,8 +27,13 @@ class SelecTreeFinderTestCase(unittest.TestCase):
 class AssignUrlTestCase(unittest.TestCase):
     def test_url_assigned(self):
         species = pd.Series(['Corymbia ficifolia :: Red Flowering Gum', 'bad name 123 :: worse name'], name='qSpecies', dtype='string')
-        assigned_species = url_finder.assign_url_paths(species)
+        assigned_species = url_finder.assign_url_paths(species, time_buffer = False)
         self.assertTrue(assigned_species.iloc[0, 1] == 540)
+
+    def test_bad_species_assigned_0(self):
+        species = pd.Series(['Corymbia ficifolia :: Red Flowering Gum', 'bad name 123 :: worse name'], name='qSpecies', dtype='string')
+        assigned_species = url_finder.assign_url_paths(species, time_buffer = False)
+        self.assertTrue(assigned_species.iloc[1, 1] == 0)
 
 if __name__ == '__main__':
     unittest.main()

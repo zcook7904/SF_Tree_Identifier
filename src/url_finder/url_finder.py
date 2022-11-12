@@ -47,43 +47,52 @@ def selec_tree_number(species_name: str, max_attempts: int = 2) -> int:
         selec_tree_number._attempt = 1
         raise ConnectionError(f'Bad status code: {r.status_code}')
 
-def assign_url_paths(species: pd.Series, time_buffer: bool = False) -> pd.DataFrame:
-    def map_url(val: str, time_buffer: bool):
+def assign_url_paths(species: pd.Series, time_buffer: bool = True) -> pd.DataFrame:
+    """Takes the species series as input and returns a dataframe containing the original series
+    and the url path number (key) appended as a coloumn"""
+
+
+
+    def map_url(scientific_name, common_name, time_buffer: bool = True):
         #time buffer to not abuse Selec Tree or be banned
         if time_buffer:
             wait_time = random.randint(1, 3)
             time.sleep(wait_time)
 
-        scientific_name, common_name = val.split(' :: ')
+        id = None
 
-        try:
-            id = selec_tree_number(common_name)
-            return id
+        if not pd.isna(common_name):
 
-
-        # when no results are found for the common name, scientific name used
-        except IndexError:
             try:
-                return selec_tree_number(scientific_name)
+                id = selec_tree_number(common_name)
+                return id
 
-            # if no results for scientific name, nan is returned
+
+            # when no results are found for the common name, scientific name used
             except IndexError:
                 pass
 
-            #connection error is returned and error is printed
             except  ConnectionError as e:
                 print(f'Connection error {e}')
+
+        try:
+            return selec_tree_number(scientific_name)
+
+        # if no results for scientific name, nan is returned
+        except IndexError:
+            pass
+
+        #connection error is returned and error is printed
         except  ConnectionError as e:
             print(f'Connection error {e}')
 
-
         return 0
 
-    species_list = species.astype('string').to_list()
+    split_species_names = species.str.split(' :: ', expand=True).rename(columns={0: 'ScientificName', 1: 'CommonName'})
     urlPaths = pd.Series(np.zeros(len(species), dtype='uint16'))
 
-    for i, specie in enumerate(species_list):
-        urlPaths.loc[i] = map_url(specie, time_buffer)
+    for row in split_species_names.itertuples():
+        urlPaths.loc[row.Index] = map_url(row.ScientificName,row.CommonName, time_buffer)
 
     mapped_series = pd.concat([species, urlPaths], axis=1).rename({ 0: 'urlPath'}, axis=1)
 
