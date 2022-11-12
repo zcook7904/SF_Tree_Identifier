@@ -1,6 +1,10 @@
+import os.path
+
 import requests
 import time
-import pandas
+import pandas as pd
+import numpy as np
+import random
 
 def wiki_exists(species_name: str) -> bool:
     url = f'https://en.wikipedia.org/wiki/{species_name}'
@@ -43,9 +47,52 @@ def selec_tree_number(species_name: str, max_attempts: int = 2) -> int:
         selec_tree_number._attempt = 1
         raise ConnectionError(f'Bad status code: {r.status_code}')
 
+def assign_url_paths(species: pd.Series, time_buffer: bool = False) -> pd.DataFrame:
+    def map_url(val: str, time_buffer: bool):
+        #time buffer to not abuse Selec Tree or be banned
+        if time_buffer:
+            wait_time = random.randint(1, 3)
+            time.sleep(wait_time)
 
+        scientific_name, common_name = val.split(' :: ')
+
+        try:
+            id = selec_tree_number(common_name)
+            return id
+
+
+        # when no results are found for the common name, scientific name used
+        except IndexError:
+            try:
+                return selec_tree_number(scientific_name)
+
+            # if no results for scientific name, nan is returned
+            except IndexError:
+                pass
+
+            #connection error is returned and error is printed
+            except  ConnectionError as e:
+                print(f'Connection error {e}')
+        except  ConnectionError as e:
+            print(f'Connection error {e}')
+
+
+        return 0
+
+    species_list = species.astype('string').to_list()
+    urlPaths = pd.Series(np.zeros(len(species), dtype='uint16'))
+
+    for i, specie in enumerate(species_list):
+        urlPaths.loc[i] = map_url(specie, time_buffer)
+
+    mapped_series = pd.concat([species, urlPaths], axis=1).rename({ 0: 'urlPath'}, axis=1)
+
+    return mapped_series
 
 if __name__ == '__main__':
-    pass
+    species_path = os.path.join('src', 'SF_Tree_Identifier', 'data', 'Species.csv')
+    species_series = pd.read_csv(species_path, index_col=0).iloc[:, 0]
+    species_df = assign_url_paths(species_series)
+    species_df.to_csv('test.csv')
 
 
