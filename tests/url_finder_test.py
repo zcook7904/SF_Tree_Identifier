@@ -21,8 +21,8 @@ class SelecTreeFinderTestCase(unittest.TestCase):
         self.assertTrue(url_finder.selec_tree_number('Corymbia_ficifolia') == 540)
 
     def test_bad_name(self):
-        with self.assertRaises(IndexError):
-            url_finder.selec_tree_number('bad_name_123')
+        with self.assertRaises(url_finder.SelecTreeResultNotFoundError):
+            url_finder.selec_tree_number('bad name 123')
 
 class AssignUrlTestCase(unittest.TestCase):
     def test_url_assigned(self):
@@ -34,6 +34,10 @@ class AssignUrlTestCase(unittest.TestCase):
         species = pd.Series(['Corymbia ficifolia :: Red Flowering Gum', 'bad name 123 :: worse name'], name='qSpecies', dtype='string')
         assigned_species = url_finder.assign_url_paths(species, time_buffer = False)
         self.assertTrue(assigned_species.iloc[1, 1] == 0)
+
+    def test_check_returned_id(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
