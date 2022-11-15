@@ -7,12 +7,16 @@ import numpy as np
 from fuzzywuzzy import fuzz
 import random
 import argparse
+from collections import namedtuple
 
 logging.basicConfig(filename='url_finder.log', filemode='w', level=logging.WARNING)
 
 class SelecTreeResultNotFoundError(Exception):
     """Raised when a SelecTree result isn't found."""
     pass
+
+Specie = namedtuple('Specie', 'scientific_name common_name')
+
 
 #TODO implement argparse
 
@@ -24,9 +28,14 @@ def wiki_exists(species_name: str) -> bool:
 
     return False
 
-def selec_tree_number(search_term: str, max_attempts: int = 2, results_per_page: int = 10) -> int:
+def selec_tree_number(specie: Specie, max_attempts: int = 2, results_per_page: int = 10) -> int:
     """Returns the SelecTree URL path ID for the given species name. Essentially returns the first result from the
-    SelecTree Seach API. Raises IndexError if the search returns no trees."""
+    SelecTree Seach API. Returns 0 if no search result is found."""
+
+    if specie.common_name:
+        search_term = f'{specie.scientific_name} {specie.common_name}'
+    else:
+        search_term = specie.scientific_name
 
     url = 'https://selectree.calpoly.edu/api/search-by-name-multiresult'
     payload = {'searchTerm': search_term, 'activePage': 1, 'resultsPerPage': results_per_page, 'sort': 1}
@@ -35,17 +44,8 @@ def selec_tree_number(search_term: str, max_attempts: int = 2, results_per_page:
     if not hasattr(selec_tree_number, '_attempt'):
         selec_tree_number._attempt = 1
 
-    def check_returned_id(result: dict, search_term: str) -> True:
-        """Checks if the returned results contains the search term."""
-        if result['common'].lower().contains(search_term.lower()):
-            return True
-        elif result['name_unformatted'].lower().contains(search_term.lower()):
-            return True
 
-        return False
-
-
-    def get_id_from_request(json_obj) -> int:
+    def get_id_from_request(json_obj: dict, specie: Specie) -> int:
 
         num_results = len(json_obj['pageResults'])
 
@@ -56,20 +56,14 @@ def selec_tree_number(search_term: str, max_attempts: int = 2, results_per_page:
             first_result = json_obj['pageResults'][0]
             id = first_result['tree_id']
             returned_name = first_result['common']
-            logging.debug(f'Result for {species_name}: {returned_name}')
+            logging.debug(f'Result for {specie}: {returned_name}')
 
             return id
 
         elif num_results > 1:
-            # will loop through results with check_returned_id(result, species_name) and if of first true
-            # need to test check_returned_id first
+            # will fuzz match results to scientific name and common name
+            # return id with highest ratio
 
-
-
-            first_result = json_obj['pageResults'][0]
-            id = first_result['tree_id']
-            returned_name = first_result['common']
-            logging.warning(f'Multiple results returned for {species_name}; returned result was {id=}: {returned_name}')
             return id
 
     if r.status_code == 200:
@@ -82,7 +76,6 @@ def selec_tree_number(search_term: str, max_attempts: int = 2, results_per_page:
         selec_tree_number(species_name, max_attempts=max_attempts)
 
     else:
-        # will change this to raise
         selec_tree_number._attempt = 1
         raise ConnectionError(f'Bad status code: {r.status_code}')
 
@@ -90,52 +83,42 @@ def assign_url_paths(species: pd.Series, time_buffer: bool = True, show_progress
     """Takes the species series as input and returns a dataframe containing the original series
     and the url path number (key) appended as a coloumn"""
 
-    def map_url(scientific_name, common_name, time_buffer: bool = True):
+    def split_species_name(species_name: str) -> (str, str | None):
+        """"Returns the scientific and common name from the species species csv. If no common name exists, """
+
+    def map_url(species_name, time_buffer: bool = True):
         #time buffer to not abuse Selec Tree or be banned
         if time_buffer:
             wait_time = random.randint(1, 3)
             time.sleep(wait_time * .5)
 
-
-        if not pd.isna(common_name):
-            try:
-                id = selec_tree_number(common_name)
-                return id
-            except SelecTreeResultNotFoundError:
-                pass
-
-        else:
-            #removing leftover seperator pandas leaves if no common name is included in the species
-            scientific_name = scientific_name.replace(' ::', '')
-
-        id = selec_tree_number(scientific_name)
+        id = selec_tree_number(species_name)
         return id
 
-
-    split_species_names = species.str.split(' :: ', expand=True).rename(columns={0: 'ScientificName', 1: 'CommonName'})
     num_species = len(species)
     urlPaths = pd.Series(np.zeros(num_species, dtype='uint16'))
 
-    for row in split_species_names.itertuples():
+    for i, specie in species.items():
         try:
-            urlPaths.loc[row.Index] = map_url(row.ScientificName,row.CommonName, time_buffer)
+
+            urlPaths.loc[i] = map_url(specie, time_buffer)
 
         except ConnectionError as err:
             logging.error(f'Connection error while mapping {row}: {err}')
-            urlPaths.loc[row.Index] = 0
+            urlPaths.loc[i] = 0
 
         except SelecTreeResultNotFoundError:
             logging.error(f'Selec Tree result not found while mapping {row}')
-            urlPaths.loc[row.Index] = 0
+            urlPaths.loc[i] = 0
 
         except Exception as err:
             logging.error(f'Exception while mapping {row}: {err=}')
-            urlPaths.loc[row.Index] = 0
+            urlPaths.loc[i] = 0
 
         if show_progress:
-            print(f'{row.Index + 1}/{num_species}', end='\r')
+            print(f'{i + 1}/{num_species}', end='\r')
 
-            if row.Index + 1 == num_species:
+            if i + 1 == num_species:
                 #new line to overwrite carriage
                 print()
 
