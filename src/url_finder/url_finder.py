@@ -4,13 +4,17 @@ import requests
 import time
 import pandas as pd
 import numpy as np
+from fuzzywuzzy import fuzz
 import random
+import argparse
 
 logging.basicConfig(filename='url_finder.log', filemode='w', level=logging.WARNING)
 
 class SelecTreeResultNotFoundError(Exception):
     """Raised when a SelecTree result isn't found."""
     pass
+
+#TODO implement argparse
 
 def wiki_exists(species_name: str) -> bool:
     url = f'https://en.wikipedia.org/wiki/{species_name}'
@@ -20,12 +24,12 @@ def wiki_exists(species_name: str) -> bool:
 
     return False
 
-def selec_tree_number(species_name: str, max_attempts: int = 2) -> int:
+def selec_tree_number(search_term: str, max_attempts: int = 2, results_per_page: int = 10) -> int:
     """Returns the SelecTree URL path ID for the given species name. Essentially returns the first result from the
     SelecTree Seach API. Raises IndexError if the search returns no trees."""
 
     url = 'https://selectree.calpoly.edu/api/search-by-name-multiresult'
-    payload = {'searchTerm': species_name, 'activePage': 1, 'resultsPerPage': 10, 'sort': 1}
+    payload = {'searchTerm': search_term, 'activePage': 1, 'resultsPerPage': results_per_page, 'sort': 1}
     r = requests.get(url, params=payload, timeout=1)
 
     if not hasattr(selec_tree_number, '_attempt'):
@@ -59,6 +63,8 @@ def selec_tree_number(species_name: str, max_attempts: int = 2) -> int:
         elif num_results > 1:
             # will loop through results with check_returned_id(result, species_name) and if of first true
             # need to test check_returned_id first
+
+
 
             first_result = json_obj['pageResults'][0]
             id = first_result['tree_id']
@@ -140,13 +146,21 @@ def assign_url_paths(species: pd.Series, time_buffer: bool = True, show_progress
 if __name__ == '__main__':
     start_time = time.time()
     species_path = os.path.join('src', 'SF_Tree_Identifier', 'data', 'Species.csv')
-    species_series = pd.read_csv(species_path, index_col=0).iloc[:10, 0]
+    species_series = pd.read_csv(species_path, index_col=0).iloc[:, 0]
     species_df = assign_url_paths(species_series, show_progress=True)
-    #species_df.to_csv('species_urls.csv')
+    species_df.to_csv('species_urls.csv')
 
+    #calculate number missing vs complete
+    num_missing = species_df.loc[species_df.urlPath == 0].size
+    total_species, _ = species_df.shape
+
+    #calculate time taken
     time_taken = time.time() - start_time
     mins = int(time_taken // 60)
     seconds = time_taken % 60
+
+    # print results
     print(f'Done! Time taken: {mins}min {seconds:.0f}s')
+    print(f'Number of species missing paths: {num_missing}/{total_species}')
 
 
