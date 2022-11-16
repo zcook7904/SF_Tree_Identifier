@@ -2,6 +2,7 @@ import os.path
 import logging
 import requests
 import time
+from dataclasses import dataclass
 import pandas as pd
 import numpy as np
 from fuzzywuzzy import fuzz
@@ -39,17 +40,61 @@ class SelecTreeResultNotFoundError(Exception):
     """Raised when a SelecTree result isn't found."""
     pass
 
-Specie = namedtuple('Specie', 'scientific_name common_name')
+@dataclass
+class Specie:
+    scientific_name: str
+    common_name: str
 
-def get_Specie_from_qSpecies(species_name: str) -> Specie:
-    """"Returns the scientific and common name from the species.csv qSpecies. If no common name exists, the common
-    name atttribute will be assigned None."""
-    if species_name.endswith(' ::'):
-        scientific_name = species_name.replace(' ::', '')
-        return Specie(scientific_name, None)
-    else:
-        scientific_name, common_name = species_name.split(' :: ')
-        return Specie(scientific_name, common_name)
+    def __init__(self, scientific_name = None, common_name = None, formatted_name = None):
+        if (formatted_name and scientific_name) or (formatted_name and common_name):
+            raise ValueError(f'formatted_name {formatted_name} passed in addition to scientific or common name')
+
+        if formatted_name:
+            self.scientific_name, self.common_name = self._set_Specie_from_formatted_name(formatted_name)
+
+        else:
+            self.scientific_name = scientific_name
+            self.common_name = common_name
+
+    @property
+    def formatted_name(self) -> str:
+        if self.common_name and self.scientific_name:
+            return f'{self.scientific_name} :: {self.common_name}'
+
+        elif self.scientific_name:
+            return f'{self.scientific_name} ::'
+
+        elif self.common_name:
+            return f':: {self.common_name}'
+
+        else:
+            raise UserWarning(f'No common or scientific name set for {self}')
+            return None
+
+    @property
+    def full_name(self):
+        if self.common_name and self.scientific_name:
+            return f'{self.scientific_name} {self.common_name}'
+
+        elif self.scientific_name:
+            return f'{self.scientific_name}'
+
+        elif self.common_name:
+            return f'{self.common_name}'
+
+        else:
+            raise UserWarning(f'No common or scientific name set for {self}')
+            return None
+
+    def _set_Specie_from_formatted_name(self, species_name: str):
+        """"Returns the scientific and common name from the species.csv qSpecies. If no common name exists, the common
+        name atttribute will be assigned None."""
+        if species_name.endswith(' ::'):
+            scientific_name = species_name.replace(' ::', '')
+            return scientific_name, None
+        else:
+            scientific_name, common_name = species_name.split(' :: ')
+            return scientific_name, common_name
 
 
 
@@ -76,12 +121,10 @@ def find_closest_match(specie: Specie, search_results: list, weight: float = 1) 
 
     closest_match_index = np.argmax(scores)
     logging.warning(f'Multi result for {specie}. '
-                 f'Highest scoring result: {search_results[closest_match_index]["name_unformatted"]} :: {search_results[closest_match_index]["common"]}'
+                 f'Highest scoring result: {search_results[closest_match_index]["name_unformatted"]} :: {search_results[closest_match_index]["common"]} '
                  f'Score: {scores.max()}')
     return closest_match_index
 
-
-#TODO implement argparse
 
 #Want to separate getting search results and processing results for testing purposes
 def get_selec_tree_search_results(search_term: str) -> dict:
@@ -90,11 +133,8 @@ def get_selec_tree_search_results(search_term: str) -> dict:
 def selec_tree_number(specie: Specie, max_attempts: int = 2, results_per_page: int = 10) -> int:
     """Returns the SelecTree URL path ID for the given species name. Essentially returns the first result from the
     SelecTree Seach API. Returns 0 if no search result is found."""
-    if specie.common_name:
-        search_term = f'{specie.scientific_name} {specie.common_name}'
-    else:
-        search_term = specie.scientific_name
 
+    search_term = specie.full_name
     url = 'https://selectree.calpoly.edu/api/search-by-name-multiresult'
     payload = {'searchTerm': search_term, 'activePage': 1, 'resultsPerPage': results_per_page, 'sort': 1}
     r = requests.get(url, params=payload, timeout=1)
@@ -156,7 +196,7 @@ def assign_url_paths(species: pd.Series, time_buffer: bool = True, show_progress
 
     for i, specie_name in species.items():
         try:
-            specie = get_Specie_from_qSpecies(specie_name)
+            specie = Specie(formatted_name=specie_name)
             urlPaths.loc[i] = map_url(specie, time_buffer)
 
         except ConnectionError as err:

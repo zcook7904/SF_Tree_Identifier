@@ -10,16 +10,16 @@ from url_finder import url_finder
 
 class SelecTreeFinderTestCase(unittest.TestCase):
     def test_good_name(self):
-        specie = url_finder.Specie('Corymbia ficifolia', 'Red Flowering Gum')
+        specie = url_finder.Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum')
         self.assertTrue(url_finder.selec_tree_number(specie) == 540)
 
     def test_bad_name(self):
         with self.assertRaises(url_finder.SelecTreeResultNotFoundError):
-            specie = url_finder.Specie('bad name', 'worse name')
+            specie = url_finder.Specie(scientific_name='bad name', common_name='worse name')
             self.assertTrue(url_finder.selec_tree_number(specie) == 0)
 
     def test_ambiguous_name(self):
-        specie = url_finder.get_Specie_from_qSpecies('Gleditsia triacanthos "Sunburst" :: Sunburst Honey Locust')
+        specie = url_finder.Specie(formatted_name='Gleditsia triacanthos "Sunburst" :: Sunburst Honey Locust')
         self.assertTrue(url_finder.selec_tree_number(specie) == 673)
 
 
@@ -40,13 +40,13 @@ class AssignUrlTestCase(unittest.TestCase):
 class SplitqSpecieNameTestCase(unittest.TestCase):
     def test_split_with_common_name(self):
         specie_name = 'Corymbia ficifolia :: Red Flowering Gum'
-        specie = url_finder.get_Specie_from_qSpecies(specie_name)
+        specie = url_finder.Specie(formatted_name=specie_name)
         self.assertTrue(specie.common_name == 'Red Flowering Gum')
         self.assertTrue(specie.scientific_name == 'Corymbia ficifolia')
 
     def test_split_with_no_common_name(self):
         specie_name = 'Corymbia ficifolia ::'
-        specie = url_finder.get_Specie_from_qSpecies(specie_name)
+        specie = url_finder.Specie(formatted_name=specie_name)
         self.assertIsNone(specie.common_name)
         self.assertTrue(specie.scientific_name == 'Corymbia ficifolia')
 
