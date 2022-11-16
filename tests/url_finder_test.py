@@ -8,21 +8,20 @@ path_to_append = os.path.join('.', 'src')
 sys.path.append(path_to_append)
 from url_finder import url_finder
 
-
-class WikiFinderTestCase(unittest.TestCase):
-    def test_good_name(self):
-        self.assertTrue(url_finder.wiki_exists('Corymbia_ficifolia'))
-
-    def test_bad_name(self):
-        self.assertFalse(url_finder.wiki_exists('bad_name_123'))
-
 class SelecTreeFinderTestCase(unittest.TestCase):
     def test_good_name(self):
-        self.assertTrue(url_finder.selec_tree_number('Corymbia_ficifolia') == 540)
+        specie = url_finder.Specie('Corymbia ficifolia', 'Red Flowering Gum')
+        self.assertTrue(url_finder.selec_tree_number(specie) == 540)
 
     def test_bad_name(self):
         with self.assertRaises(url_finder.SelecTreeResultNotFoundError):
-            url_finder.selec_tree_number('bad name 123')
+            specie = url_finder.Specie('bad name', 'worse name')
+            self.assertTrue(url_finder.selec_tree_number(specie) == 0)
+
+    def test_ambiguous_name(self):
+        specie = url_finder.get_Specie_from_qSpecies('Gleditsia triacanthos "Sunburst" :: Sunburst Honey Locust')
+        self.assertTrue(url_finder.selec_tree_number(specie) == 673)
+
 
 class AssignUrlTestCase(unittest.TestCase):
     def test_url_assigned(self):
@@ -37,6 +36,19 @@ class AssignUrlTestCase(unittest.TestCase):
 
     def test_check_returned_id(self):
         pass
+
+class SplitqSpecieNameTestCase(unittest.TestCase):
+    def test_split_with_common_name(self):
+        specie_name = 'Corymbia ficifolia :: Red Flowering Gum'
+        specie = url_finder.get_Specie_from_qSpecies(specie_name)
+        self.assertTrue(specie.common_name == 'Red Flowering Gum')
+        self.assertTrue(specie.scientific_name == 'Corymbia ficifolia')
+
+    def test_split_with_no_common_name(self):
+        specie_name = 'Corymbia ficifolia ::'
+        specie = url_finder.get_Specie_from_qSpecies(specie_name)
+        self.assertIsNone(specie.common_name)
+        self.assertTrue(specie.scientific_name == 'Corymbia ficifolia')
 
 
 if __name__ == '__main__':
