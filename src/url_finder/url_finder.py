@@ -44,10 +44,15 @@ class SelecTreeResultNotFoundError(Exception):
 class Specie:
     scientific_name: str
     common_name: str
+    tree_id: int
 
-    def __init__(self, scientific_name = None, common_name = None, formatted_name = None):
-        if (formatted_name and scientific_name) or (formatted_name and common_name):
-            raise ValueError(f'formatted_name {formatted_name} passed in addition to scientific or common name')
+    def __init__(self, scientific_name = None, common_name = None, formatted_name = None,
+                 pageResult = None, tree_id = None):
+        if (common_name is None or scientific_name is None) ^ (formatted_name is None) ^ (pageResult is None):
+            raise ValueError('Too many args passed to init Specie')
+
+        if pageResult:
+            self.tree_id, self.scientific_name, self.common_name = self._set_Specie_from_pageResult(pageResult)
 
         if formatted_name:
             self.scientific_name, self.common_name = self._set_Specie_from_formatted_name(formatted_name)
@@ -55,6 +60,8 @@ class Specie:
         else:
             self.scientific_name = scientific_name
             self.common_name = common_name
+
+        self.tree_id = tree_id
 
     @property
     def formatted_name(self) -> str:
@@ -96,7 +103,14 @@ class Specie:
             scientific_name, common_name = species_name.split(' :: ')
             return scientific_name, common_name
 
+    def _set_Specie_from_pageResult(self, pageResult: dict):
+        tree_id = pageResult['tree_id']
+        common_name = pageResult['common']
+        scientific_name = pageResult['unformatted_name'].replace('<em>', '').replace('</em>', '')
+        return tree_id, scientific_name, common_name
 
+    def __repr__(self):
+        return self.formatted_name
 
 def find_closest_match(specie: Specie, search_results: list, weight: float = 1) -> int:
     """Takes a Specie and search results from Selec Tree and returns the index of the
@@ -104,6 +118,7 @@ def find_closest_match(specie: Specie, search_results: list, weight: float = 1) 
     scores = np.zeros(len(search_results))
 
     for i, result in enumerate(search_results):
+        # TODO create Specie from result
         if specie.common_name.lower() == result['common'].lower() or \
                 specie.scientific_name.lower() == result["name_unformatted"].lower():
             logging.warning(f'Perfect match: {specie}: {result["name_unformatted"]}')
@@ -129,6 +144,41 @@ def find_closest_match(specie: Specie, search_results: list, weight: float = 1) 
 #Want to separate getting search results and processing results for testing purposes
 def get_selec_tree_search_results(search_term: str) -> dict:
     pass
+
+def get_selec_tree_url_path(specie: Specie) -> int:
+    search_term = [specie.full_name, specie.scientific_name, specie.common_name]
+    num_results = 0
+
+    while len(search_terms) > 0:
+        search_term = search_terms.pop(0)
+        possible_ids = query_selec_tree(search_term)
+        num_results = len(possible_ids)
+        if num_results > 0:
+            break
+    else:
+        raise SelecTreeResultNotFound()
+
+    if num_results == 1:
+        result_specie = Specie(pageResult=search_results[0])
+        logging.debug(f'Result for {specie}: {result_specie.formatted_name}')
+
+        return result_specie.tree_id
+
+    # full_name vs common_name vs scientific_name logic
+    if search_term == specie.full_name:
+    # normal fuzz matching logic
+        pass
+    elif search_term == specie.scientific_name:
+    # only match scientific name
+        pass
+
+    elif search_term == specie.common_name:
+        pass
+    # only match common
+    else:
+        raise Error
+
+
 
 def selec_tree_number(specie: Specie, max_attempts: int = 2, results_per_page: int = 10) -> int:
     """Returns the SelecTree URL path ID for the given species name. Essentially returns the first result from the
