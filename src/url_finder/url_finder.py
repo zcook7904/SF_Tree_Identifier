@@ -106,29 +106,50 @@ class Specie:
     def _set_Specie_from_pageResult(self, pageResult: dict):
         tree_id = pageResult['tree_id']
         common_name = pageResult['common']
-        scientific_name = pageResult['unformatted_name'].replace('<em>', '').replace('</em>', '')
+        scientific_name = pageResult['name_unformatted'].replace('<em>', '').replace('</em>', '')
         return tree_id, scientific_name, common_name
 
     def __repr__(self):
         return self.formatted_name
+
+def _get_match_scores(specie: Specie, search_results: list[Specie], property: str) -> np.array:
+    scores = np.zeros(len(search_results))
+    for i, result in enumerate(search_results):
+        score = fuzz.token_sort_ratio(getattr(specie, property).lower(), getattr(result, property).lower())
+        scores[i] = score
+
+    return scores
+
+def get_common_name_match_scores(specie: Specie, search_results: list[Specie]):
+    if specie.common_name:
+        return _get_match_scores(specie, search_results, 'common_name')
+    else:
+        raise ValueError(f'No common name assigned to {specie}')
+def get_scientific_name_match_scores(specie: Specie, search_results: list[Specie]):
+    if specie.scientific_name:
+        return _get_match_scores(specie, search_results, 'scientific_name')
+
+    else:
+        raise ValueError(f'No scientific name assigned to {specie}')
+
 
 def find_closest_match(specie: Specie, search_results: list, weight: float = 1) -> int:
     """Takes a Specie and search results from Selec Tree and returns the index of the
     closest matching result to the specie. Optional kwarg 'weight' applies a multiplier to the scientific name score"""
     scores = np.zeros(len(search_results))
 
-    for i, result in enumerate(search_results):
-        # TODO create Specie from result
-        if specie.common_name.lower() == result['common'].lower() or \
-                specie.scientific_name.lower() == result["name_unformatted"].lower():
-            logging.warning(f'Perfect match: {specie}: {result["name_unformatted"]}')
+    for i, pageResult in enumerate(search_results):
+        result = Specie(pageResult=pageResult)
+        if specie.common_name.lower() == result.common_name.lower() or \
+                specie.scientific_name.lower() == result.scientific_name.lower():
+            logging.warning(f'Perfect match: {specie}: {result}')
             return i
 
         else:
-            common_name_score = fuzz.token_sort_ratio(specie.common_name.lower(), result['common'].lower())
+            common_name_score = fuzz.token_sort_ratio(specie.common_name.lower(), result.common_name.lower())
             scientific_name_score = fuzz.token_sort_ratio(specie.scientific_name.lower(),
-                                                         result['name_unformatted'].lower())
-            scores[i] = common_name_score + scientific_name_score * weight
+                                                         result.scientific_name.lower())
+            scores[i] = (common_name_score + scientific_name_score * weight) / (1 + weight)
 
 
     score_count[0] += scores.max()
@@ -141,16 +162,31 @@ def find_closest_match(specie: Specie, search_results: list, weight: float = 1) 
     return closest_match_index
 
 
-#Want to separate getting search results and processing results for testing purposes
-def get_selec_tree_search_results(search_term: str) -> dict:
-    pass
+def query_selec_tree(search_term: str, results_per_page: int = 10) -> list:
+    url = 'https://selectree.calpoly.edu/api/search-by-name-multiresult'
+    payload = {'searchTerm': search_term, 'activePage': 1, 'resultsPerPage': results_per_page, 'sort': 1}
+    r = requests.get(url, params=payload, timeout=1)
 
-def get_selec_tree_url_path(specie: Specie) -> int:
-    search_term = [specie.full_name, specie.scientific_name, specie.common_name]
+    if r.status_code == 200:
+        search_results = r.json()['pageResults']
+
+        search_result_species = list()
+        for result in search_results:
+            search_result_species.append(Species(search_result_species=result))
+
+        return search_result_species
+
+    raise ConnectionError(f'Bad status code: {r.status_code}')
+
+def get_selec_tree_url_path(specie: Specie, weight: float = 1) -> int:
+    """Takes a tree specie Specie as argument and returns the url path from selec tree to the closest matching page."""
+    search_terms = {'full_name': specie.full_name,
+                    'scientific_name': specie.scientific_name,
+                    'common_name': specie.common_name}
     num_results = 0
 
-    while len(search_terms) > 0:
-        search_term = search_terms.pop(0)
+    for key in search_terms:
+        search_term = search_terms[key]
         possible_ids = query_selec_tree(search_term)
         num_results = len(possible_ids)
         if num_results > 0:
@@ -165,19 +201,45 @@ def get_selec_tree_url_path(specie: Specie) -> int:
         return result_specie.tree_id
 
     # full_name vs common_name vs scientific_name logic
-    if search_term == specie.full_name:
-    # normal fuzz matching logic
-        pass
-    elif search_term == specie.scientific_name:
-    # only match scientific name
-        pass
+    if key == 'full_name':
+        scientific_name_scores = get_scientific_name_match_scores(specie, possible_ids)
+        if max(scientific_name_scores) == 100: # perfect match
+            location = np.where(scientific_name_scores == 100)[0]
+            return possible_ids[location].tree_id
 
-    elif search_term == specie.common_name:
-        pass
-    # only match common
+        common_name_scores = get_common_name_match_scores(specie, possible_ids)
+        if max(common_name_scores) == 100: # perfect match
+            location = np.where(common_name_scores == 100)[0]
+            return possible_ids[location].tree_id
+
+        # weighted average of two scores
+        total_scores = (scientific_name_scores * weight + common_name_scores) / (weight + 1)
+        if max(total_scores) > 50:
+            location = total_scores.argmax(total_scores)
+            return possible_ids[location].tree_id
+
+
+    elif key == 'scientific_name':
+        scientific_name_scores = get_scientific_name_match_scores(specie, possible_ids)
+        if max(scientific_name_scores) == 100: # perfect match
+            location = np.where(scientific_name_scores == 100)[0]
+            return possible_ids[location].tree_id
+
+        if max(scientific_name_scores) > 50:
+            location = total_scores.argmax(scientific_name_scores)
+            return possible_ids[location].tree_id
+
+    elif key == 'common_name'
+        common_name_scores = get_common_name_match_scores(specie, possible_ids)
+        if max(common_name_scores) == 100: # perfect match
+            location = np.where(common_name_scores == 100)[0]
+            return possible_ids[location].tree_id
+
+        if max(common_name_scores) > 50:
+            location = common_name_scores.argmax(total_scores)
+            return possible_ids[location].tree_id
     else:
-        raise Error
-
+        raise Error('get_selec_tree_url_path key not found in matching statements')
 
 
 def selec_tree_number(specie: Specie, max_attempts: int = 2, results_per_page: int = 10) -> int:

@@ -8,6 +8,14 @@ path_to_append = os.path.join('.', 'src')
 sys.path.append(path_to_append)
 from url_finder import url_finder
 
+
+class MatchScoresTestCase(unittest.TestCase):
+    def test_match_common_name_match_scores(self):
+        specie = url_finder.Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum')
+        other_specie = url_finder.Specie(scientific_name='Corymbia otherfolia', common_name='Red Flowering Gum')
+        scores = url_finder.get_common_name_match_scores(specie, [other_specie])
+        self.assertTrue(scores[0] == 100)
+
 class SelecTreeFinderTestCase(unittest.TestCase):
     def test_good_name(self):
         specie = url_finder.Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum')
