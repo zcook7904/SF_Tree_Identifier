@@ -51,17 +51,18 @@ class Specie:
         if (common_name is None or scientific_name is None) ^ (formatted_name is None) ^ (pageResult is None):
             raise ValueError('Too many args passed to init Specie')
 
-        if pageResult:
+        elif pageResult:
             self.tree_id, self.scientific_name, self.common_name = self._set_Specie_from_pageResult(pageResult)
 
-        if formatted_name:
+        elif formatted_name:
             self.scientific_name, self.common_name = self._set_Specie_from_formatted_name(formatted_name)
 
         else:
             self.scientific_name = scientific_name
             self.common_name = common_name
 
-        self.tree_id = tree_id
+        if not hasattr(self, 'tree_id'):
+            self.tree_id = tree_id
 
     @property
     def formatted_name(self) -> str:
@@ -75,7 +76,7 @@ class Specie:
             return f':: {self.common_name}'
 
         else:
-            raise UserWarning(f'No common or scientific name set for {self}')
+            raise UserWarning('No common or scientific name set for Specie')
             return None
 
     @property
@@ -109,8 +110,6 @@ class Specie:
         scientific_name = pageResult['name_unformatted'].replace('<em>', '').replace('</em>', '')
         return tree_id, scientific_name, common_name
 
-    def __repr__(self):
-        return self.formatted_name
 
 def _get_match_scores(specie: Specie, search_results: list[Specie], property: str) -> np.array:
     scores = np.zeros(len(search_results))
@@ -172,7 +171,7 @@ def query_selec_tree(search_term: str, results_per_page: int = 10) -> list:
 
         search_result_species = list()
         for result in search_results:
-            search_result_species.append(Species(search_result_species=result))
+            search_result_species.append(Specie(pageResult=result))
 
         return search_result_species
 
@@ -192,10 +191,10 @@ def get_selec_tree_url_path(specie: Specie, weight: float = 1) -> int:
         if num_results > 0:
             break
     else:
-        raise SelecTreeResultNotFound()
+        raise SelecTreeResultNotFoundError
 
     if num_results == 1:
-        result_specie = Specie(pageResult=search_results[0])
+        result_specie = possible_ids[0]
         logging.debug(f'Result for {specie}: {result_specie.formatted_name}')
 
         return result_specie.tree_id
@@ -205,17 +204,21 @@ def get_selec_tree_url_path(specie: Specie, weight: float = 1) -> int:
         scientific_name_scores = get_scientific_name_match_scores(specie, possible_ids)
         if max(scientific_name_scores) == 100: # perfect match
             location = np.where(scientific_name_scores == 100)[0]
+            logging.debug(f'The scientific name was a perfect match for {specie}: {possible_ids[location]}')
             return possible_ids[location].tree_id
 
         common_name_scores = get_common_name_match_scores(specie, possible_ids)
         if max(common_name_scores) == 100: # perfect match
             location = np.where(common_name_scores == 100)[0]
+            logging.debug(f'The common name was a perfect match for {specie}: {possible_ids[location]}')
             return possible_ids[location].tree_id
 
         # weighted average of two scores
         total_scores = (scientific_name_scores * weight + common_name_scores) / (weight + 1)
         if max(total_scores) > 50:
-            location = total_scores.argmax(total_scores)
+            location = np.where(total_scores == total_scores.max())[0][0]
+            logging.debug(f'Search results using the {key} of {specie} returned {possible_ids[location]}. '
+                          f'Weighted score = {total_scores.max()}')
             return possible_ids[location].tree_id
 
 
@@ -227,67 +230,30 @@ def get_selec_tree_url_path(specie: Specie, weight: float = 1) -> int:
 
         if max(scientific_name_scores) > 50:
             location = total_scores.argmax(scientific_name_scores)
+            logging.debug(f'Search results using the {key} of {specie} returned {possible_ids[location]}. '
+                          f'Score = {scientific_name_scores.max()}')
             return possible_ids[location].tree_id
 
-    elif key == 'common_name'
+    elif key == 'common_name':
         common_name_scores = get_common_name_match_scores(specie, possible_ids)
         if max(common_name_scores) == 100: # perfect match
             location = np.where(common_name_scores == 100)[0]
+            logging.debug(f'The common name was a perfect match for {specie}: {possible_ids[location]}')
             return possible_ids[location].tree_id
 
         if max(common_name_scores) > 50:
-            location = common_name_scores.argmax(total_scores)
+            location = common_name_scores.argmax(common_name_scores)
+            logging.debug(f'Search results using the {key} of {specie} returned {possible_ids[location]}. '
+                          f'Score = {common_name_scores.max()}')
             return possible_ids[location].tree_id
+
     else:
         raise Error('get_selec_tree_url_path key not found in matching statements')
 
+    #if no id is returned
+    logging.error(f'No strong match for {specie}')
+    return 0
 
-def selec_tree_number(specie: Specie, max_attempts: int = 2, results_per_page: int = 10) -> int:
-    """Returns the SelecTree URL path ID for the given species name. Essentially returns the first result from the
-    SelecTree Seach API. Returns 0 if no search result is found."""
-
-    search_term = specie.full_name
-    url = 'https://selectree.calpoly.edu/api/search-by-name-multiresult'
-    payload = {'searchTerm': search_term, 'activePage': 1, 'resultsPerPage': results_per_page, 'sort': 1}
-    r = requests.get(url, params=payload, timeout=1)
-
-    if not hasattr(selec_tree_number, '_attempt'):
-        selec_tree_number._attempt = 1
-
-
-    def get_id_from_request(search_results: list, specie: Specie) -> int:
-
-        num_results = len(search_results)
-
-        if num_results == 0:
-            # need to perform search again with specie.scientific_name and specie.common_name
-            raise SelecTreeResultNotFoundError
-
-        elif num_results == 1:
-            first_result = search_results[0]
-            id = first_result['tree_id']
-            returned_name = first_result['common']
-            logging.debug(f'Result for {specie}: {returned_name}')
-
-            return id
-
-        elif num_results > 1:
-            closest_match = search_results[find_closest_match(specie, search_results)]
-            return closest_match['tree_id']
-
-    if r.status_code == 200:
-        search_results = r.json()['pageResults']
-        selec_tree_number._attempt = 1
-        return get_id_from_request(search_results, specie)
-# functions should be flipper. This function will return search_results to get_id or raise error
-    elif selec_tree_number._attempt < max_attempts:
-        selec_tree_number._attempt += 1
-        time.sleep(.5)
-        selec_tree_number(specie, max_attempts=max_attempts)
-
-    else:
-        selec_tree_number._attempt = 1
-        raise ConnectionError(f'Bad status code: {r.status_code}')
 
 def assign_url_paths(species: pd.Series, time_buffer: bool = True, show_progress: bool = False) -> pd.DataFrame:
     """Takes the species series as input and returns a dataframe containing the original series
@@ -297,10 +263,10 @@ def assign_url_paths(species: pd.Series, time_buffer: bool = True, show_progress
     def map_url(species_name, time_buffer: bool = True) -> int:
         #time buffer to not abuse Selec Tree or be banned
         if time_buffer:
-            wait_time = random.randint(1, 3)
-            time.sleep(wait_time * .5)
+            wait_time = random.randint(1, 3) * .5
+            time.sleep(wait_time)
 
-        id = selec_tree_number(species_name)
+        id = get_selec_tree_url_path(species_name)
         return id
 
     num_species = len(species)
@@ -353,6 +319,6 @@ if __name__ == '__main__':
     # print results
     print(f'Done! Time taken: {mins}min {seconds:.0f}s')
     print(f'Number of species missing paths: {num_missing}/{total_species}')
-    if score_count[1] > 0:
-        print(f'Multi result occured {score_count[1]} times, average score was {score_count[0] / score_count[1]: .0f}')
+    #if score_count[1] > 0:
+        #print(f'Multi result occured {score_count[1]} times, average score was {score_count[0] / score_count[1]: .0f}')
 

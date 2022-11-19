@@ -19,16 +19,16 @@ class MatchScoresTestCase(unittest.TestCase):
 class SelecTreeFinderTestCase(unittest.TestCase):
     def test_good_name(self):
         specie = url_finder.Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum')
-        self.assertTrue(url_finder.selec_tree_number(specie) == 540)
+        self.assertTrue(url_finder.get_selec_tree_url_path(specie) == 540)
 
     def test_bad_name(self):
         with self.assertRaises(url_finder.SelecTreeResultNotFoundError):
             specie = url_finder.Specie(scientific_name='bad name', common_name='worse name')
-            self.assertTrue(url_finder.selec_tree_number(specie) == 0)
+            self.assertTrue(url_finder.get_selec_tree_url_path(specie) == 0)
 
     def test_ambiguous_name(self):
         specie = url_finder.Specie(formatted_name='Gleditsia triacanthos "Sunburst" :: Sunburst Honey Locust')
-        self.assertTrue(url_finder.selec_tree_number(specie) == 673)
+        self.assertTrue(url_finder.get_selec_tree_url_path(specie) == 673)
 
 
 class AssignUrlTestCase(unittest.TestCase):
