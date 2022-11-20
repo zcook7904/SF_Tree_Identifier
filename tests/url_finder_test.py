@@ -28,8 +28,28 @@ class SelecTreeFinderTestCase(unittest.TestCase):
 
     def test_ambiguous_name(self):
         specie = url_finder.Specie(formatted_name='Gleditsia triacanthos "Sunburst" :: Sunburst Honey Locust')
+        print(url_finder.get_selec_tree_url_path(specie))
         self.assertTrue(url_finder.get_selec_tree_url_path(specie) == 673)
 
+    def test_other_name(self):
+        specie = url_finder.Specie(formatted_name= 'Lophostemon confertus :: Brisbane Box')
+        self.assertFalse(url_finder.get_selec_tree_url_path(specie) == 673)
+
+    def test_other_other_name(self):
+        specie = url_finder.Specie(formatted_name= 'Cupressus macrocarpa :: Monterey Cypress')
+        self.assertFalse(url_finder.get_selec_tree_url_path(specie) == 673)
+
+    def test_other_final_name(self):
+        specie = url_finder.Specie(formatted_name= 'Salix spp :: Willow' )
+        self.assertFalse(url_finder.get_selec_tree_url_path(specie) == 673)
+
+    def test_other_other_final_name(self):
+        specie = url_finder.Specie(formatted_name= 'patanus racemosa ::' )
+        self.assertFalse(url_finder.get_selec_tree_url_path(specie) == 673)
+
+    def test_other_other_final_name(self):
+        specie = url_finder.Specie(formatted_name= 'Brachychiton discolor ::')
+        self.assertFalse(url_finder.get_selec_tree_url_path(specie) == 673)
 
 class AssignUrlTestCase(unittest.TestCase):
     def test_url_assigned(self):
@@ -58,6 +78,11 @@ class SplitqSpecieNameTestCase(unittest.TestCase):
         self.assertIsNone(specie.common_name)
         self.assertTrue(specie.scientific_name == 'Corymbia ficifolia')
 
+    def test_split_with_common_name_2(self):
+        specie_name = 'Salix spp :: Willow'
+        specie = url_finder.Specie(formatted_name=specie_name)
+        self.assertTrue(specie.common_name == 'Willow')
+        self.assertTrue(specie.scientific_name == 'Salix spp')
 
 if __name__ == '__main__':
     unittest.main()
