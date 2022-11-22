@@ -78,6 +78,6 @@ venv.bak/
 .idea
 test.csv
 /example_selectree_response.json
-/test_logging.csv
-/url_finder.log
+/archive/test_logging.csv
+/archive/url_finder.log
 /notebooks/Untitled.ipynb
