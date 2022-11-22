@@ -72,7 +72,7 @@ class Address:
         Accepts list in format [number, street_name, street_type] and returns string of full postal address"""
 
         if not self.check_address_arg_length():
-            return 490
+            raise Exception
 
         if not self.check_street_number():
             return 491
