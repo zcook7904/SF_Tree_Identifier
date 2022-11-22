@@ -1,4 +1,18 @@
 from dataclasses import dataclass
+from fuzzywuzzy import fuzz
+
+
+class AddressError(Exception):
+    """Base Exception for errors related to the Address class"""
+    raise NotImplementedError
+
+class AddressLengthError(AddressError):
+    """Error raised when an entered address does not contain at least 3 elements"""
+    pass
+
+class NonIntegerStreetNumberError(AddressError):
+    """Error raise when an entered street number is not an integer."""
+
 
 class Address:
     """Dataclass to represent address. str returns the street address as a string and
@@ -72,10 +86,10 @@ class Address:
         Accepts list in format [number, street_name, street_type] and returns string of full postal address"""
 
         if not self.check_address_arg_length():
-            raise Exception
+            raise AddressLengthError('Not enough address components were entered')
 
         if not self.check_street_number():
-            return 491
+            return NonIntegerStreetNumberError('Street Number is not an integer')
 
         # clean up street name
         self.format_street_name()
@@ -85,3 +99,8 @@ class Address:
             street_type = self.street_name.rsplit(' ')[-1]
             abbreviated_street_type = street_abbreviation_dict[street_type.lower()]
             self.street_name = self.street_name.replace(street_type, abbreviated_street_type)
+
+    def match_closest_street(self, streets: list[str]):
+        pass
+
+#NOTE move some methods outside of the class since Address is it's own module

@@ -6,10 +6,9 @@ import time
 from dataclasses import dataclass
 import pandas as pd
 import numpy as np
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 import random
 import argparse
-from collections import namedtuple
 
 """Search results from selec tree API are in the form of:
 {
