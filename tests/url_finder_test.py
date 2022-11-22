@@ -26,11 +26,6 @@ class SelecTreeFinderTestCase(unittest.TestCase):
             specie = url_finder.Specie(scientific_name='bad name', common_name='worse name')
             self.assertTrue(url_finder.get_selec_tree_url_path(specie) == 0)
 
-    def test_ambiguous_name(self):
-        specie = url_finder.Specie(formatted_name='Gleditsia triacanthos "Sunburst" :: Sunburst Honey Locust')
-        print(url_finder.get_selec_tree_url_path(specie))
-        self.assertTrue(url_finder.get_selec_tree_url_path(specie) == 673)
-
     def test_other_name(self):
         specie = url_finder.Specie(formatted_name= 'Lophostemon confertus :: Brisbane Box')
         self.assertFalse(url_finder.get_selec_tree_url_path(specie) == 673)

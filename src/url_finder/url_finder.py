@@ -35,7 +35,8 @@ from collections import namedtuple
 global score_count
 score_count = [0, 0]  # total score, number of times score is calculated
 
-logging.basicConfig(filename="url_finder.log", filemode="w", level=logging.WARNING)
+FILENAME = "mapped_species"
+logging.basicConfig(filename=f"{FILENAME}.log", filemode="w", level=logging.WARNING)
 
 
 class SelecTreeResultNotFoundError(Exception):
@@ -144,7 +145,7 @@ def _get_match_scores(
     Returns a numpy array of the scores with the same indices as the original search_result list passed to the function."""
     scores = np.zeros(len(search_results))
     for i, result in enumerate(search_results):
-        score = fuzz.token_sort_ratio(
+        score = fuzz.partial_token_sort_ratio(
             getattr(specie, property).lower(), getattr(result, property).lower()
         )
         scores[i] = score
@@ -178,7 +179,7 @@ def query_selec_tree(search_term: str, results_per_page: int = 10) -> list:
         "resultsPerPage": results_per_page,
         "sort": 1,
     }
-    r = requests.get(url, params=payload, timeout=1)
+    r = requests.get(url, params=payload, timeout=2)
 
     if r.status_code == 200:
         search_results = r.json()["pageResults"]
@@ -193,12 +194,18 @@ def query_selec_tree(search_term: str, results_per_page: int = 10) -> list:
         r.raise_for_status()
 
     except HTTPError as err:
-        raise HTTPError(f'Error for {search_term}: {err}')
+        raise HTTPError(f"Error for {search_term}: {err}")
 
     except Exception as err:
-        raise ConnectionError(f'Connection error (non-HTTP) for {search_term}: {err}')
+        raise ConnectionError(f"Connection error (non-HTTP) for {search_term}: {err}")
+
+
 def find_closest_match(
-    specie: Specie, possible_ids: list[Specie], key: str, weight: int
+    specie: Specie,
+    possible_ids: list[Specie],
+    key: str,
+    weight: int,
+    minimum_score: int = 55,
 ):
     num_results = len(possible_ids)
 
@@ -230,7 +237,7 @@ def find_closest_match(
         total_scores = (scientific_name_scores * weight + common_name_scores) / (
             weight + 1
         )
-        if max(total_scores) > 50:
+        if max(total_scores) > minimum_score:
             location = np.where(total_scores == total_scores.max())[0][0]
             logging.warning(
                 f"Search results using the {key} of {specie} returned {possible_ids[location]}. "
@@ -244,8 +251,10 @@ def find_closest_match(
             location = np.where(scientific_name_scores == 100)[0][0]
             return possible_ids[location].tree_id
 
-        if max(scientific_name_scores) > 50:
-            location = np.where(scientific_name_scores == scientific_name_scores.max())[0][0]
+        if max(scientific_name_scores) > minimum_score:
+            location = np.where(scientific_name_scores == scientific_name_scores.max())[
+                0
+            ][0]
             logging.warning(
                 f"Search results using the {key} of {specie} returned {possible_ids[location]}. "
                 f"Score = {scientific_name_scores.max()}"
@@ -261,7 +270,7 @@ def find_closest_match(
             )
             return possible_ids[location].tree_id
 
-        if max(common_name_scores) > 50:
+        if max(common_name_scores) > minimum_score:
             location = np.where(common_name_scores == common_name_scores.max())[0][0]
             logging.warning(
                 f"Search results using the {key} of {specie} returned {possible_ids[location]}. "
@@ -304,7 +313,10 @@ def get_selec_tree_url_path(specie: Specie, weight: float = 1) -> int:
 
 
 def assign_url_paths(
-    species: pd.Series, time_buffer: bool = True, show_progress: bool = False
+    species: pd.Series,
+    time_buffer: bool = True,
+    show_progress: bool = False,
+    weight: float = 1.2,
 ) -> pd.DataFrame:
     """Takes the species series as input and returns a dataframe containing the original series
     and the url path number (key) appended as a coloumn"""
@@ -312,7 +324,7 @@ def assign_url_paths(
     def map_url(species_name, time_buffer: bool = True) -> int:
         # time buffer to not abuse Selec Tree or be banned
         if time_buffer:
-            wait_time = random.randint(1, 3) * 0.5
+            wait_time = random.randint(1, 3) * 2
             time.sleep(wait_time)
 
         id = get_selec_tree_url_path(species_name, weight=1.2)
@@ -350,7 +362,7 @@ def assign_url_paths(
                 print()
 
     mapped_series = pd.concat([species, urlPaths], axis=1).rename(
-        {0: "urlPath"}, axis=1
+        {0: "urlPath", "0": "qSpecies"}, axis=1
     )
 
     return mapped_series
@@ -360,9 +372,8 @@ if __name__ == "__main__":
     start_time = time.time()
     species_path = os.path.join("src", "SF_Tree_Identifier", "data", "Species.csv")
     species_series = pd.read_csv(species_path, index_col=0).iloc[:, 0]
-    species_df = assign_url_paths(species_series, show_progress=True)
-    print(os.getcwd())
-    species_df.to_csv("species_urls.csv")
+    species_df = assign_url_paths(species_series, show_progress=True, weight=1.2)
+    species_df.to_csv(f"{FILENAME}.csv")
 
     # calculate number missing vs complete
     num_missing = species_df.loc[species_df.urlPath == 0].urlPath.size
