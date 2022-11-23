@@ -3,6 +3,7 @@ import sqlite3
 import os
 from timeit import timeit
 import Address
+import pandas as pd
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, 'SF_Trees.db')
@@ -83,20 +84,23 @@ def main(user_input: str, check_nearby: bool = True) -> tuple:
     if len(steps) < 2:
         logging.warning(f'Couldn\'t find trees at given address, some found at {query_address.street_number} though')
 
-    qSpecies = []
-    urlPaths = []
-    species = []
-    for key in keys:
-        qSpecie, urlPath = get_species(key)
-        specie_dict = {qSpecie: urlPath}
-        species.append(specie_dict)
+    results = pd.DataFrame(columns=['qSpecies', 'urlPath', 'queried_address'], index=[i for i in range(len(keys))])
 
-    return species, query_address.street_address.title()
+    for i, key in enumerate(keys):
+        qSpecie, urlPath = get_species(key)
+        results.loc[i] = {'qSpecies': qSpecie, 'urlPath': urlPath, 'queried_address': query_address.street_address.title()}
+
+    print(results)
+
+    #return species, query_address.street_address.title()
 
 def format_output(qSpecies: list, query_address):
     print(dict(Counter(qSpecies)))
 
+# if __name__ == "__main__":
+#     logging.basicConfig(level=logging.ERROR)
+#     time = timeit(lambda: (main('1470 Valenci St')), number=100) / 100
+#     print(f'Time: {time}s')
+
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.ERROR)
-    time = timeit(lambda: (main('1470 Valenci St')), number=100) / 100
-    print(f'Time: {time}s')
+    main('900 Brotherhood Way')
