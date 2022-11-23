@@ -5,7 +5,7 @@ import re
 from string import punctuation as PUNCTUATION
 
 from dataclasses import dataclass
-from thefuzz import fuzz
+from thefuzz import process as fuzz_process
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
@@ -24,6 +24,9 @@ class AddressLengthError(AddressError):
 
 class NonIntegerStreetNumberError(AddressError):
     """Error raise when an entered street number is not an integer."""
+
+class NoCloseMatchError(Exception):
+    """Error raised when no close match is found in match_closest_street_name"""
 
 
 class Address:
@@ -226,5 +229,25 @@ def load_street_names(path: str = os.path.join(DATA_DIR, 'street_names.json')) -
         )
 
 
-def match_closest_street(self, streets: list[str]):
-    pass
+def match_closest_street_name(address: Address, streets: list[str], min_score: int = 90) -> Address:
+    """Match the Address objects street name to a queryable street name in streets (from SF_Trees.db).
+    If perfect match, the original Address will be returned.
+    If there is a match with a score greater than min_score, a new Address object with that matched street name will be returned.
+    If no close match is found, NoCloseMatchError is raised."""
+
+    street_name = address.street_name
+
+    if street_name in streets:
+        return address
+
+    closest_match, score = fuzz_process.extractOne(street_name, streets)
+    if score > min_score:
+        address.street_name = closest_match
+        return address
+    raise NoCloseMatchError(f'Street name match for {address.street_name} doesn\'t meet minimum score of {min_score}.'
+                            f'{closest_match=} {score=}')
+
+def get_Address_for_query(user_input: str) -> Address:
+    address = create_standard_Address(user_input)
+    street_names = load_street_names()
+    return match_closest_street_name(address, street_names)

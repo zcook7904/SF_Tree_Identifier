@@ -97,5 +97,47 @@ class StandardAddressTestCase(unittest.TestCase):
         address = Address.create_standard_Address(address_input)
         self.assertTrue(address.street_address == '123 example-example st')
 
+class StreetMatchingTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.street_list = Address.load_street_names()
+
+    def test_valencia_street(self):
+        address = Address.Address('1468 valencia st')
+        closest_match = Address.match_closest_street_name(address, self.street_list)
+        self.assertTrue(closest_match.street_name == 'valencia st')
+
+    def test_mistyped_name(self):
+        address = Address.Address('1468 vaelncia st')
+        closest_match = Address.match_closest_street_name(address, self.street_list)
+        self.assertTrue(closest_match.street_name == 'valencia st')
+
+    def test_trash_name(self):
+        address = Address.Address('1468 vaelnci st')
+        with self.assertRaises(Address.NoCloseMatchError):
+            closest_match = Address.match_closest_street_name(address, self.street_list)
+
+class GetAddressForQueryTestCase(unittest.TestCase):
+    def test_good_address(self):
+        user_input = '1468 Valencia Street, San Francisco'
+        query_address = Address.get_Address_for_query(user_input)
+        self.assertTrue(query_address.street_address == '1468 valencia st')
+
+    def test_bad_address(self):
+        user_input = '1468 Example Street, San Francisco'
+        with self.assertRaises(Address.NoCloseMatchError):
+            query_address = Address.get_Address_for_query(user_input)
+
+    def test_michael_address(self):
+        user_input = '272 Capp St, San Francisco, CA 94110'
+        query_address = Address.get_Address_for_query(user_input)
+        self.assertTrue(query_address.street_address == '272 capp st')
+
+    def test_other_michael_address(self):
+        user_input = '272 Capp Street San Francisco'
+        query_address = Address.get_Address_for_query(user_input)
+        self.assertTrue(query_address.street_address == '272 capp st')
+
+
+
 if __name__ == '__main__':
     unittest.main()
