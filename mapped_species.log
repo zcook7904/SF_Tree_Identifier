@@ -1,8 +1,0 @@
-WARNING:root:Result for Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum', tree_id=None): Corymbia ficifolia :: RED FLOWERING GUM
-ERROR:root:Selec Tree result not found while mapping bad name 123 :: worse name
-WARNING:root:Result for Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum', tree_id=None): Corymbia ficifolia :: RED FLOWERING GUM
-ERROR:root:Selec Tree result not found while mapping bad name 123 :: worse name
-WARNING:root:Result for Specie(scientific_name='Corymbia ficifolia', common_name='Red Flowering Gum', tree_id=None): Corymbia ficifolia :: RED FLOWERING GUM
-WARNING:root:The common name was a perfect match for Specie(scientific_name='Salix spp', common_name='Willow', tree_id=None): Specie(scientific_name='Acacia salicina', common_name='WILLOW ACACIA', tree_id=33)
-WARNING:root:The scientific name was a perfect match for Specie(scientific_name='Lophostemon confertus', common_name='Brisbane Box', tree_id=None): Specie(scientific_name='Lophostemon confertus', common_name='BRISBANE BOX', tree_id=1425)
-WARNING:root:The common name was a perfect match for Specie(scientific_name='Cupressus macrocarpa', common_name='Monterey Cypress', tree_id=None): Specie(scientific_name='Hesperocyparis macrocarpa', common_name='MONTEREY CYPRESS', tree_id=476)
