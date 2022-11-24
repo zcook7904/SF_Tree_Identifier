@@ -2,7 +2,8 @@ import logging
 import sqlite3
 import os
 from timeit import timeit
-import Address
+from collections import namedtuple
+from . import Address
 import pandas as pd
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -66,41 +67,47 @@ def main(user_input: str, check_nearby: bool = True) -> tuple:
     except Address.AddressError as err:
         raise Exception('Invalid address entered, ensure proper street address is given.')
 
-    if check_nearby:
-        # tests street number, street number + 2, street_number - 2 (i.e. 1468,  1470, 1464)
-        steps = [-4, 2, 0]
-    else:
-        # only tests given address street number
-        steps = [0]
 
+    address_key = namedtuple('AddressKeys', ['address', 'key'])
+    address_keys = []
     keys = None
-    while keys is None and len(steps) > 0:
-        query_address.street_number = int(query_address.street_number) + steps.pop()
-        keys = get_species_keys(query_address)
 
-    if keys is None:
-        raise Exception(f'Can\'t find any trees near entered street number')
+    keys = get_species_keys(query_address)
 
-    if len(steps) < 2:
-        logging.warning(f'Couldn\'t find trees at given address, some found at {query_address.street_number} though')
+    if not keys is None:
+        for key in keys:
+            address_keys.append(address_key(query_address.street_address, key))
 
-    results = pd.DataFrame(columns=['qSpecies', 'urlPath', 'queried_address'], index=[i for i in range(len(keys))])
+    if keys is None and check_nearby:
+        logging.warning(f'Couldn\'t find trees at given address, looking nearby...')
+        steps = [-4, 2]
 
-    for i, key in enumerate(keys):
-        qSpecie, urlPath = get_species(key)
-        results.loc[i] = {'qSpecies': qSpecie, 'urlPath': urlPath, 'queried_address': query_address.street_address.title()}
+        while len(steps) > 0:
+            query_address.street_number = int(query_address.street_number) + steps.pop()
+            keys = get_species_keys(query_address)
+            if not keys is None:
+                for key in keys:
+                    address_keys.append(address_key(query_address.street_address, key))
 
-    print(results)
+    if len(address_keys) == 0:
+        raise Exception(f"Can't find any trees near entered street number")
 
-    #return species, query_address.street_address.title()
+    results = pd.DataFrame(columns=['qSpecies', 'urlPath', 'queried_address'], index=[i for i in range(len(address_keys))])
 
-def format_output(qSpecies: list, query_address):
-    print(dict(Counter(qSpecies)))
+    for i, item in enumerate(address_keys):
+        qSpecie, urlPath = get_species(item.key)
+        results.loc[i] = {'qSpecies': qSpecie, 'urlPath': urlPath, 'queried_address': item.address.title()}
 
-# if __name__ == "__main__":
-#     logging.basicConfig(level=logging.ERROR)
-#     time = timeit(lambda: (main('1470 Valenci St')), number=100) / 100
-#     print(f'Time: {time}s')
+    return results
+
+def format_output(results: pd.DataFrame):
+    results.groupby()
+
 
 if __name__ == "__main__":
-    main('900 Brotherhood Way')
+    logging.basicConfig(level=logging.ERROR)
+    time = timeit(lambda: (main('1468 Valenci St')), number=100) / 100
+    print(f'Time: {time}s')
+
+# if __name__ == "__main__":
+#     main('900 Brotherhood Way').to_csv('brotherhood.csv')
