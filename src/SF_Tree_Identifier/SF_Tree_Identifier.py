@@ -3,8 +3,9 @@ import sqlite3
 import os
 from timeit import timeit
 from collections import namedtuple
-from . import Address
 import pandas as pd
+
+import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_Trees.db")
@@ -82,7 +83,7 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame:
             "Invalid address entered, ensure proper street address is given."
         )
 
-    #namedtuple address_key to keep addresses and species keys together for later result formatting
+    # namedtuple address_key to keep addresses and species keys together for later result formatting
     address_key = namedtuple("AddressKeys", ["address", "key"])
     address_keys = []
     keys = None
@@ -125,26 +126,67 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame:
 
     return results
 
-def create_message(tree_name: TreeName, number: int):
-    if not tree_name.scientific is None:
-        first_line = f'{tree_name.common.title()} ({tree_name.scientific.title()})'
+
+def create_message(tree: pd.Series, number: int):
+
+    scientific_name, common_name = split_qSpecies(tree.qSpecies)
+
+    if not common_name is None:
+        first_line = f"{common_name.title()} ({scientific_name.title()})"
+    else:
+        first_line = f'{scientific_name.title()}'
 
     if number > 1:
-        first_line = first_line.append(f': {number}')
+        first_line = first_line + f": {number}"
 
-    if tree_name.urlPath != 0:
-        second_line = f'https://selectree.calpoly.edu/tree-detail/{tree_name.urlPath}\n'
-        return '\n'.join([first_line, second_line])
+    if tree.urlPath != 0:
+        second_line = f"https://selectree.calpoly.edu/tree-detail/{tree.urlPath}\n"
+        return "\n".join([first_line, second_line])
     else:
-        return first_line.append('\n')
+        return first_line.append("\n")
 
-def format_output(results: pd.DataFrame):
-    if results:
-        pass
+def split_qSpecies(qSpecies: str) -> tuple:
+    split_species = qSpecies.split(' :: ')
+    if len(split_species) == 1:
+        scientific_name = split_species[0].replace(' ::', '')
+        common_name = None
+    else:
+        scientific_name, common_name = split_species
+
+    return scientific_name, common_name
+
+def format_output(results: pd.DataFrame) -> list[str]:
+    queried_addresses = results.queried_address.unique()
+    messages = list()
+
+    for address in queried_addresses:
+        address_line = f'Trees at {address}:\n'
+        num_species = len(results.qSpecies.unique())
+
+        if len(results) == 1:
+            address_line = f'Tree at {address}:\n'
+            messages.append(address_line + create_message(results.iloc[0], 1))
+
+        elif num_species == 1:
+            messages.append(address_line + create_message(results.iloc[0], len(results)))
+
+        else:
+            grouped_results = results.groupby(['qSpecies', 'urlPath']).count().reset_index().rename({'queried_address': 'count'}, axis=1)
+            first_message = messages.append(address_line + create_message(grouped_results.iloc[0], grouped_results.loc[0, 'count']))
+
+            for tree in grouped_results[1:].itertuples():
+                messages.append(create_message(tree, tree.count))
+
+    return messages
 
 
 if __name__ == "__main__":
-    pass
+    results = main('1468 Valencia St')
+    formatted_results = format_output(results)
+
+    for message in formatted_results:
+        print(message)
+
 
 # if __name__ == "__main__":
 #     main('900 Brotherhood Way').to_csv('brotherhood.csv')
