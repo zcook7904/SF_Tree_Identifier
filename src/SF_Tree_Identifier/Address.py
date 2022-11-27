@@ -9,6 +9,8 @@ from thefuzz import process as fuzz_process
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
+##TODO add broadway edge case
+
 
 class AddressError(Exception):
     """Base Exception for errors related to the Address class"""
@@ -242,12 +244,14 @@ def match_closest_street_name(
     if street_name in streets:
         return address
 
-    closest_match, score = fuzz_process.extractOne(street_name, streets)
+    closest_match, score = fuzz_process.extractOne(
+        street_name, streets
+    )  # specify method
     if score > min_score:
         address.street_name = closest_match
         return address
     raise NoCloseMatchError(
-        f"Street name match for {address.street_name} doesn't meet minimum score of {min_score}."
+        f"Street name match for {address.street_name} doesn't meet minimum score of {min_score}. "
         f"{closest_match=} {score=}"
     )
 

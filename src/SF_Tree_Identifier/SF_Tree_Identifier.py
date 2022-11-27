@@ -77,7 +77,7 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame:
     try:
         query_address = Address.get_Address_for_query(user_input)
     except Address.NoCloseMatchError:
-        raise Exception("Address not found in San Francisco")
+        raise Exception(f"Address {user_input} not found in San Francisco")
     except Address.AddressError as err:
         raise Exception(
             "Invalid address entered, ensure proper street address is given."
@@ -134,7 +134,7 @@ def create_message(tree: pd.Series, number: int):
     if not common_name is None:
         first_line = f"{common_name.title()} ({scientific_name.title()})"
     else:
-        first_line = f'{scientific_name.title()}'
+        first_line = f"{scientific_name.title()}"
 
     if number > 1:
         first_line = first_line + f": {number}"
@@ -145,34 +145,51 @@ def create_message(tree: pd.Series, number: int):
     else:
         return first_line.append("\n")
 
+
 def split_qSpecies(qSpecies: str) -> tuple:
-    split_species = qSpecies.split(' :: ')
+    """Split qSpecies into a scientific name and common name. Common name will be returned as None if no common
+    name is in the qSpecies field."""
+    split_species = qSpecies.split(" :: ")
     if len(split_species) == 1:
-        scientific_name = split_species[0].replace(' ::', '')
+        scientific_name = split_species[0].replace(" ::", "")
         common_name = None
     else:
         scientific_name, common_name = split_species
 
     return scientific_name, common_name
 
+
 def format_output(results: pd.DataFrame) -> list[str]:
+    """Creates a formatted list of string messages from main()'s results df."""
     queried_addresses = results.queried_address.unique()
     messages = list()
 
     for address in queried_addresses:
-        address_line = f'Trees at {address}:\n'
+        address_line = f"Trees at {address}:\n"
         num_species = len(results.qSpecies.unique())
 
         if len(results) == 1:
-            address_line = f'Tree at {address}:\n'
+            address_line = f"Tree at {address}:\n"
             messages.append(address_line + create_message(results.iloc[0], 1))
 
         elif num_species == 1:
-            messages.append(address_line + create_message(results.iloc[0], len(results)))
+            messages.append(
+                address_line + create_message(results.iloc[0], len(results))
+            )
 
         else:
-            grouped_results = results.groupby(['qSpecies', 'urlPath']).count().reset_index().rename({'queried_address': 'count'}, axis=1)
-            first_message = messages.append(address_line + create_message(grouped_results.iloc[0], grouped_results.loc[0, 'count']))
+            grouped_results = (
+                results.groupby(["qSpecies", "urlPath"])
+                .count()
+                .reset_index()
+                .rename({"queried_address": "count"}, axis=1)
+            )
+            first_message = messages.append(
+                address_line
+                + create_message(
+                    grouped_results.iloc[0], grouped_results.loc[0, "count"]
+                )
+            )
 
             for tree in grouped_results[1:].itertuples():
                 messages.append(create_message(tree, tree.count))
@@ -180,12 +197,10 @@ def format_output(results: pd.DataFrame) -> list[str]:
     return messages
 
 
-if __name__ == "__main__":
-    results = main('1468 Valencia St')
-    formatted_results = format_output(results)
-
-    for message in formatted_results:
-        print(message)
+def get_trees(user_input: str) -> list[str]:
+    """Takes a string address from a user and returns a list of messages containing what trees are at that address."""
+    tree_df = main(user_input)
+    return formatted_output(tree_df)
 
 
 # if __name__ == "__main__":

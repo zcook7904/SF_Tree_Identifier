@@ -2,19 +2,21 @@ import logging
 from timeit import timeit
 import os
 import sys
+import cProfile
 from datetime import datetime
 import pandas as pd
 
 # adds python module to path
 path_to_append = os.path.join('.', 'src')
 sys.path.append(path_to_append)
-from SF_Tree_Identifier import SF_Tree_Identifier
+from SF_Tree_Identifier import SF_Tree_Identifier, Address
 
 logging.basicConfig(level=logging.ERROR)
 
 number=1000
 test_addresses = ['1470 Valencia St', '1470 valenci street', '1468 Valencia St', '900 Brotherhood Way']
 def main():
+    cProfile.run('SF_Tree_Identifier.main(test_addresses[1])', 'perf.prof')
     benchmarks = pd.DataFrame(columns=['datetime', *test_addresses])
 
     benchmarks.loc[0, 'datetime'] = datetime.now().isoformat()
