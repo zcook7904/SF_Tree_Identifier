@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "SF_Tree_Identifier"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
   { name="Zaven Cook", email="zavencook@gmail.com" },
 ]
@@ -18,7 +18,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pandas"
+    "pandas",
+    "thefuzz"
 ]
 
 [project.urls]

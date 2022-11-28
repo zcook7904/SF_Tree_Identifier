@@ -77,9 +77,9 @@ venv.bak/
 
 .idea
 test.csv
-/example_selectree_response.json
+/dev/example_selectree_response.json
 /archive/test_logging.csv
 /archive/url_finder.log
 /notebooks/Untitled.ipynb
 /archive/
-/perf.prof
+/performance/perf.prof
