@@ -90,8 +90,10 @@ def main(
     address_keys = []
     keys = None
 
+    # get all tree_ids at the query address
     keys = get_species_keys(query_address)
 
+    # if there are trees there, make address/tree_id tuple (may change to dict)
     if not keys is None:
         for key in keys:
             address_keys.append(address_key(query_address.street_address, key))

@@ -25,12 +25,14 @@ def main():
 
     for i, address in enumerate(addresses):
         try:
-            SF_Tree_Identifier.main(address)
+            result = SF_Tree_Identifier.main(address)
             correct_addresses += 1
         except Exception as err:
             logging.error(f'{address}: {err}')
 
         print(f'{i + 1}/{total_addresses} complete', end='\r')
+        if len(result.queried_address.unique()) > 1:
+            print(f'\nMultiple returned queried Addresses: {address}')
 
     print(f'\nFinished, trees were found at {correct_addresses}/{total_addresses}')
     total_time = time.time() - start_time
