@@ -9,13 +9,13 @@ import pandas as pd
 path_to_append = os.path.join('.', 'src')
 sys.path.append(path_to_append)
 from SF_Tree_Identifier import SF_Tree_Identifier, Address
-
-os.remove('sf_address_testing.log')
+if os.path.exists('sf_address_testing.log'):
+    os.remove('sf_address_testing.log')
 logging.basicConfig(level=logging.ERROR, filename='sf_address_testing.log')
 
 def main():
-
-    with open('addresses.json', 'r') as fp:
+    address_path = os.path.join('dev', 'addresses.json')
+    with open(address_path, 'r') as fp:
         addresses = json.load(fp)
 
     total_addresses = len(addresses)
@@ -25,8 +25,10 @@ def main():
 
     for i, address in enumerate(addresses):
         try:
-            SF_Tree_Identifier.main(address)
+            result = SF_Tree_Identifier.main(address)
             correct_addresses += 1
+            if len(result.queried_address.unique()) > 1:
+                print(f'\nMultiple returned queried Addresses: {address}')
         except Exception as err:
             logging.error(f'{address}: {err}')
 

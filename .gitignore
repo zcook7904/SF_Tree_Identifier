@@ -82,4 +82,4 @@ test.csv
 /archive/url_finder.log
 /notebooks/Untitled.ipynb
 /archive/
-/performance/perf.prof
+/performance/profiles/perf.prof
