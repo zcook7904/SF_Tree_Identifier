@@ -71,7 +71,9 @@ def get_species(key: str) -> tuple | None:
         return None
 
 
-def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame:
+def main(
+    user_input: str, check_nearby: bool = True, output: str = "dataframe"
+) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
     try:
@@ -109,22 +111,47 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame:
     if len(address_keys) == 0:
         raise Exception(f"Can't find any trees near entered street number")
 
-    # create an empty results dataframe with number of rows as address_keys
-    results = pd.DataFrame(
-        columns=["qSpecies", "urlPath", "queried_address"],
-        index=[i for i in range(len(address_keys))],
-    )
+    if output.lower() == "dataframe":
 
-    # save results to df
-    for i, item in enumerate(address_keys):
-        qSpecie, urlPath = get_species(item.key)
-        results.loc[i] = {
-            "qSpecies": qSpecie,
-            "urlPath": urlPath,
-            "queried_address": item.address.title(),
-        }
+        # create an empty results dataframe with number of rows as address_keys
+        results = pd.DataFrame(
+            columns=["qSpecies", "urlPath", "queried_address"],
+            index=[i for i in range(len(address_keys))],
+        )
 
-    return results
+        # save results to df
+        for i, item in enumerate(address_keys):
+            qSpecie, urlPath = get_species(item.key)
+            results.loc[i] = {
+                "qSpecies": qSpecie,
+                "urlPath": urlPath,
+                "queried_address": item.address.title(),
+            }
+
+        return results
+
+    elif output.lower() == "dict":
+        results = {}
+        for item in address_keys:
+            print(item)
+            qSpecie, urlPath = get_species(item.key)
+            tree_dict = {"qSpecies": qSpecie, "urlPath": urlPath}
+
+            query_address = item.address.title()
+            if query_address not in results.keys():
+                tree_dict.update({"count": 1})
+                results.update({query_address: [tree_dict]})
+
+            else:
+                tree_list = results[query_address]
+                tree_list.append(tree_dict)
+
+        return results
+
+    else:
+        raise ValueError(
+            f"Bad parameter {output=}. Output parameter should be either 'dataframe' or 'dict'"
+        )
 
 
 def create_message(tree: pd.Series, number: int):
@@ -159,8 +186,25 @@ def split_qSpecies(qSpecies: str) -> tuple:
     return scientific_name, common_name
 
 
-def format_output(results: pd.DataFrame) -> list[str]:
+def create_output_dict(results: pd.DataFrame) -> list[dict]:
     """Creates a formatted list of string messages from main()'s results df."""
+    queried_addresses = results.queried_address.unique()
+    tree_dict = {}
+
+    for address in queried_addresses:
+        grouped_results = (
+            results.groupby(["qSpecies", "urlPath"])
+            .count()
+            .reset_index()
+            .rename({"queried_address": "count"}, axis=1)
+        )
+
+        tree_dict.update({address: grouped_results.to_dict(orient="records")})
+    return tree_dict
+
+
+def format_output(results: pd.DataFrame) -> list[str]:
+    """Creates a formatted list of string messages from main()'s results df. DEPRECATED USE"""
     queried_addresses = results.queried_address.unique()
     messages = list()
 
@@ -192,16 +236,25 @@ def format_output(results: pd.DataFrame) -> list[str]:
             )
 
             for tree in grouped_results[1:].itertuples():
+
                 messages.append(create_message(tree, tree.count))
 
     return messages
 
 
 def get_trees(user_input: str) -> list[str]:
-    """Takes a string address from a user and returns a list of messages containing what trees are at that address."""
-    tree_df = main(user_input)
-    return formatted_output(tree_df)
+    """Takes a string address from a user and returns a dictionary of the format:
+    {address_1: [{
+                qSpecies: str,
+                urlPath: str,
+                count: str
+                },{}...]
+     address_2: [{}, ...]
+     }."""
+
+    tree_df = main(user_input, output="dataframe")
+    return create_output_dict(tree_df)
 
 
-# if __name__ == "__main__":
-#     main('900 Brotherhood Way').to_csv('brotherhood.csv')
+if __name__ == "__main__":
+    print(get_trees("900 Brotherhood Way"))
