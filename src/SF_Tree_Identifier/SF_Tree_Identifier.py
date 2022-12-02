@@ -10,6 +10,9 @@ import Address
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_Trees.db")
 
+class NoTreeFoundError(Exception):
+    """Raised if no tree is found at the given address."""
+    pass
 
 def create_address_query(address: Address.Address) -> str:
     """Creates the sql query to retrieve the qSpecies keys for a specfic address. Returns the query as a string."""
@@ -77,10 +80,10 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     try:
         query_address = Address.get_Address_for_query(user_input)
     except Address.NoCloseMatchError as err:
-        raise Exception(f"Address {user_input} not found in San Francisco") from err
+        raise Address.NoCloseMatchError(f"Address {user_input} not found in San Francisco") from err
     except Address.AddressError as err:
-        raise Exception(
-            "Invalid address entered, ensure proper street address is given."
+        raise Address.AddressError(
+            f"Invalid address {user_input} entered, ensure proper street address is given."
         ) from err
 
     # namedtuple address_key to keep addresses and species keys together for later result formatting
@@ -112,7 +115,7 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
                     )
 
     if len(address_keys) == 0:
-        raise Exception("Can't find any trees near entered street number")
+        raise NoTreeFoundError(f"Can't find any trees near entered street address {user_input}")
 
     # create an empty results dataframe with number of rows as address_keys
     results = pd.DataFrame(
@@ -130,45 +133,27 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
 
     return results
 
-
-
-
-def split_qSpecies(qSpecies: str) -> tuple:
-    """Split qSpecies into a scientific name and common name. Common name will be returned as None if no common
-    name is in the qSpecies field DEPRECATED."""
-    split_species = qSpecies.split(" :: ")
-    if len(split_species) == 1:
-        scientific_name = split_species[0].replace(" ::", "")
-        common_name = None
-    else:
-        scientific_name, common_name = split_species
-
-    return scientific_name, common_name
-
-
 def create_output_dict(results: pd.DataFrame) -> list[dict]:
     """Creates a formatted list of string messages from main()'s results df."""
     queried_addresses = results.queried_address.unique()
     tree_dict = {}
     for address in queried_addresses:
         grouped_results = (
-            results.loc[results.queried_address == address].groupby(["qSpecies", "urlPath"])
+            results.loc[results.queried_address == address]
+            .groupby(["qSpecies", "urlPath"])
             .count()
             .reset_index()
             .rename({"queried_address": "count"}, axis=1)
         )
-        print(grouped_results)
-        grouped_results[
-            ["scientific_name", "common_name"]
-        ] = (grouped_results.qSpecies.str.split("::", expand=True).fillna("")
-        .apply(lambda name: name.str.strip()))
-
-        grouped_results = (
-            grouped_results.drop("qSpecies", axis=1)
+        grouped_results[["scientific_name", "common_name"]] = (
+            grouped_results.qSpecies.str.split("::", expand=True)
+            .fillna("")
+            .apply(lambda name: name.str.strip())
         )
+
+        grouped_results = grouped_results.drop("qSpecies", axis=1)
         tree_dict.update({address: grouped_results.to_dict(orient="records")})
     return tree_dict
-
 
 
 def get_trees(user_input: str) -> list[str]:
@@ -182,9 +167,15 @@ def get_trees(user_input: str) -> list[str]:
      address_2: [{}, ...]
      }."""
 
-    tree_df = main(user_input)
+    try:
+        tree_df = main(user_input)
+    except (Address.AddressError, NoTreeFoundError) as err:
+        raise err
+    except Exception as err:
+        raise err
+
     return create_output_dict(tree_df)
 
 
 if __name__ == "__main__":
-    print(get_trees("1204 19th St"))
+    print(get_trees("1209 19th St"))

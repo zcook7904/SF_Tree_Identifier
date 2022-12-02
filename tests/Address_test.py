@@ -19,7 +19,12 @@ class AddressErrorsTestCase(unittest.TestCase):
         with self.assertRaises((Address.NonIntegerStreetNumberError)):
             Address.Address('12d Street St')
 
+    def test_bad_street(self):
+        streets = Address.load_street_names()
 
+        with self.assertRaises((Address.NoCloseMatchError)):
+            address = Address.Address('12 bad St')
+            Address.match_closest_street_name(address, streets)
 class NewAddressTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.address = Address.Address('123 Street St')
