@@ -8,7 +8,7 @@ import pandas as pd
 import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-DB_LOCATION = os.path.join(DATA_DIR, "SF_Trees.db")
+DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
 
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
@@ -178,4 +178,4 @@ def get_trees(user_input: str) -> list[str]:
 
 
 if __name__ == "__main__":
-    print(get_trees("1209 19th St"))
+    print(get_trees("1204 19th St"))
