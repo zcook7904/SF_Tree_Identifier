@@ -4,7 +4,6 @@ import json
 import re
 from string import punctuation as PUNCTUATION
 
-from dataclasses import dataclass
 from thefuzz import process as fuzz_process
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -76,8 +75,8 @@ class Address:
             raise AddressLengthError(
                 f"Street address {self.street_address} does not contain enough elements (number name type)"
             )
-        else:
-            return True
+
+        return True
 
     def check_street_number(self) -> bool:
         """Returns True if the street number is valid"""
@@ -109,18 +108,18 @@ class Address:
         except AddressLengthError as err:
             if raise_error:
                 raise AddressLengthError(err)
-            else:
-                logging.warning(f"Excepted error: {err}")
-                return False
+
+            logging.warning(f"Excepted error: {err}")
+            return False
 
         try:
             self.check_street_number()
         except NonIntegerStreetNumberError as err:
             if raise_error:
                 raise NonIntegerStreetNumberError(err)
-            else:
-                logging.warning(f"Excepted error: {err}")
-                return False
+
+            logging.warning(f"Excepted error: {err}")
+            return False
 
         return True
 
@@ -128,7 +127,8 @@ class Address:
 def load_street_type_abbreviations(
     path: str = os.path.join(DATA_DIR, "street_types.json")
 ) -> dict:
-    """Loads the street type dictionary json file and returns it as a dict. Raises FileNotFoundError if the file is not found."""
+    """Loads the street type dictionary json file and returns it as a dict.
+    Raises FileNotFoundError if the file is not found."""
     try:
         with open(path, "r") as fp:
             street_type_dict = json.load(fp)
@@ -177,7 +177,8 @@ def abbreviate_street_type(address: Address) -> Address:
     street_type = address.street_type.lower()
 
     if street_type in street_abbreviation_dict.keys():
-        # get the corressponding abbreviated street type and create a new street name string with the long type replaced
+        # get the corressponding abbreviated street type and
+        # create a new street name string with the long type replaced
         abbreviated_street_type = street_abbreviation_dict[street_type]
         new_street_name = address.street_name.replace(
             address.street_type, abbreviated_street_type
@@ -187,11 +188,10 @@ def abbreviate_street_type(address: Address) -> Address:
         return abbreviated_address
 
     # if the street type is not found in the dict, return the original address
-    else:
-        return address
+    return address
 
 
-def remove_punctuation(input: str, *exceptions: str) -> str:
+def remove_punctuation(punctuated_input: str, *exceptions: str) -> str:
     """Removes all PUNCTUATION from a string and returns the stripped string.
     Excepts exceptions from PUNCTUATION removal."""
     allowed_punctuation = PUNCTUATION
@@ -199,7 +199,7 @@ def remove_punctuation(input: str, *exceptions: str) -> str:
         allowed_punctuation = allowed_punctuation.replace(exception, "")
 
     allowed_punctuation_set = re.compile(f"[{re.escape(allowed_punctuation)}]")
-    return allowed_punctuation_set.sub("", input)
+    return allowed_punctuation_set.sub("", punctuated_input)
 
 
 def create_standard_Address(user_input: str) -> Address:
@@ -236,7 +236,8 @@ def match_closest_street_name(
 ) -> Address:
     """Match the Address objects street name to a queryable street name in streets (from SF_Trees.db).
     If perfect match, the original Address will be returned.
-    If there is a match with a score greater than min_score, a new Address object with that matched street name will be returned.
+    If there is a match with a score greater than min_score,
+    a new Address object with that matched street name will be returned.
     If no close match is found, NoCloseMatchError is raised."""
 
     street_name = address.street_name
