@@ -8,7 +8,7 @@ import pandas as pd
 # adds python module to path
 path_to_append = os.path.join('.', 'src')
 sys.path.append(path_to_append)
-from SF_Tree_Identifier import SF_Tree_Identifier, Address
+import SF_Tree_Identifier, Address
 if os.path.exists('sf_address_testing.log'):
     os.remove('sf_address_testing.log')
 logging.basicConfig(level=logging.ERROR, filename='sf_address_testing.log')

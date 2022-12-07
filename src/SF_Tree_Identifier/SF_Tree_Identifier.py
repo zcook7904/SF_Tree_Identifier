@@ -8,7 +8,7 @@ import pandas as pd
 import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
+DB_LOCATION = os.path.join(DATA_DIR, "SF_rees.db")
 
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
@@ -31,6 +31,13 @@ def create_species_query(key) -> str:
         WHERE "index" = {key}"""
     return query
 
+def check_db_connection() -> bool:
+    data_dir = os.listdir(DATA_DIR)
+    _, db_name = os.path.split(DB_LOCATION)
+    if db_name in data_dir:
+        return True
+
+    raise FileNotFoundError(f"Can't find the tree database at {DB_LOCATION}")
 
 def query_db(query: str):
     """General function to query the sqlite3 database at DB_LOCATION. Returns the results if they are found or None if there are none."""
@@ -92,6 +99,12 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     address_keys = []
     species_keys = None
 
+    # test connection to tree database
+    try:
+        check_db_connection()
+    except FileNotFoundError as err:
+        raise err
+    
     # get all tree_ids at the query address
     species_keys = get_species_keys(query_address)
 
@@ -175,6 +188,49 @@ def get_trees(user_input: str) -> list[str]:
         raise err
 
     return create_output_dict(tree_df)
+
+def create_message(tree: dict) -> str:
+    """Creates formatted messages for each tree."""
+
+    if tree['common_name'] != '':
+        first_line = f"{tree['common_name'].title()} ({tree['scientific_name'].title()})"
+    else:
+        first_line = f"{tree['scientific_name'].title()}"
+
+    number = tree['count']
+    if number > 1:
+        first_line = first_line + f": {tree['count']}"
+
+    if tree['urlPath'] != 0:
+        second_line = f"https://selectree.calpoly.edu/tree-detail/{tree['urlPath']}\n"
+        return "\n".join([first_line, second_line])
+
+    return first_line.append("\n")
+
+def format_messages(results: dict) -> list[str]:
+    """Creates a formatted list of string messages from SF_Tree_Identifer dict output."""
+    queried_addresses = results.keys()
+    messages = []
+
+    for address in queried_addresses:
+
+        if len(results[address]) == 1:
+            address_line = f"Tree at {address}:\n"
+            messages.append(address_line + create_message(results[address][0]))
+        else:
+            address_line = f"Trees at {address}:\n"
+            messages.append(address_line + create_message(results[address][0]))
+
+            for tree in results[address]:
+                messages.append(create_message(tree))
+
+    return messages
+
+def print_trees(trees: dict) -> list[str]:
+    messages = format_messages(trees)
+
+    for message in messages:
+        print(message)
 
 
 if __name__ == "__main__":
