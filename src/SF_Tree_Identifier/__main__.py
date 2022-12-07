@@ -2,7 +2,7 @@ import argparse
 import os
 
 import pytest
-import SF_Tree_Identifier, test
+from . import SF_Tree_Identifier, test
 
 def main():
     """"""
