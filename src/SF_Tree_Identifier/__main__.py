@@ -1,8 +1,21 @@
 import argparse
+import sys
 import os
+from pathlib import Path # if you haven't already done so
 
-import pytest
-from . import SF_Tree_Identifier, test
+# https://stackoverflow.com/questions/16981921/relative-imports-in-python-3
+
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[1]
+sys.path.append(str(root))
+
+# Additionally remove the current file's directory from sys.path
+try:
+    sys.path.remove(str(parent))
+except ValueError: # Already removed
+    pass
+
+from SF_Tree_Identifier import identify_trees, test
 
 def main():
     """"""

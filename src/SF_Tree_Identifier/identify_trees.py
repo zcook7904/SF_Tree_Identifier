@@ -5,7 +5,7 @@ from collections import namedtuple
 
 import pandas as pd
 
-import Address
+from SF_Tree_Identifier import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")

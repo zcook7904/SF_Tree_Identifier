@@ -2,10 +2,17 @@ import logging
 import unittest
 import os
 import sys
+from pathlib import Path # if you haven't already done so
 
-# adds python module to path
-path_to_append = os.path.join('.', 'src')
-sys.path.append(path_to_append)
+file = Path(os.path.dirname(__file__)).resolve()
+parent, root = file.parent, file.parents[1]
+sys.path.append(str(root))
+
+# Additionally remove the current file's directory from sys.path
+try:
+    sys.path.remove(str(parent))
+except ValueError: # Already removed
+    pass
 from SF_Tree_Identifier import Address
 
 logging.basicConfig(level=logging.ERROR)
