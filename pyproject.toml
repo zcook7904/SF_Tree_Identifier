@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "SF_Tree_Identifier"
-version = "0.3.0"
+version = "0.3.1"
 authors = [
   { name="Zaven Cook", email="zavencook@gmail.com" },
 ]
@@ -19,7 +19,8 @@ classifiers = [
 ]
 dependencies = [
     "pandas",
-    "thefuzz[python-Levenshtein]"
+    "thefuzz[python-Levenshtein]",
+    "pytest"
 ]
 
 [project.urls]
@@ -27,8 +28,8 @@ dependencies = [
 "Bug Tracker" = "https://github.com/zcook7904/SF_Tree_Identifier/issues"
 
 [tool.setuptools.packages.find]
-where = ["src"]  # ["."] by default
-exclude = ["venv", "config.ini", "performance_log.csv"]
+where = ["src", "tests"]  # ["."] by default
+exclude = ["venv"]
 
 [tool.setuptools.package-data]
 "SF_Tree_Identifier.data" = ["*.json", "*.pkl", "*.db"]

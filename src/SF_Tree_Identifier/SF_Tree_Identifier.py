@@ -8,7 +8,7 @@ import pandas as pd
 import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-DB_LOCATION = os.path.join(DATA_DIR, "SF_rees.db")
+DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
 
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
@@ -104,7 +104,7 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
         check_db_connection()
     except FileNotFoundError as err:
         raise err
-    
+
     # get all tree_ids at the query address
     species_keys = get_species_keys(query_address)
 
