@@ -1,7 +1,6 @@
 import logging
 import sqlite3
 import os
-from collections import namedtuple
 
 import pandas as pd
 
@@ -10,9 +9,12 @@ from SF_Tree_Identifier import Address
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
 
+
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
+
     pass
+
 
 def create_address_query(address: Address.Address) -> str:
     """Creates the sql query to retrieve the qSpecies keys for a specfic address. Returns the query as a string."""
@@ -31,6 +33,7 @@ def create_species_query(key) -> str:
         WHERE "index" = {key}"""
     return query
 
+
 def check_db_connection() -> bool:
     data_dir = os.listdir(DATA_DIR)
     _, db_name = os.path.split(DB_LOCATION)
@@ -38,6 +41,7 @@ def check_db_connection() -> bool:
         return True
 
     raise FileNotFoundError(f"Can't find the tree database at {DB_LOCATION}")
+
 
 def query_db(query: str):
     """General function to query the sqlite3 database at DB_LOCATION. Returns the results if they are found or None if there are none."""
@@ -52,19 +56,18 @@ def query_db(query: str):
     return result
 
 
-def get_species_keys(address: Address.Address) -> list[str] | None:
+def get_species_keys(address: Address.Address) -> list[str]:
     """Queries the sqlite3 database for the species keys found at the given address.
-    Returns a list of the keys found keys or None if none are found."""
+    Returns a list of the keys found keys. List will be empty if none are found"""
     address_query = create_address_query(address)
     results = query_db(address_query)
+    keys = []
 
     if results:
-        keys = []
         for result in results:
             keys.append(str(result[0]))
-        return keys
 
-    return None
+    return keys
 
 
 def get_species(key: str) -> tuple | None:
@@ -81,23 +84,24 @@ def get_species(key: str) -> tuple | None:
     return None
 
 
+def get_address_keys(street_number, street_address, species_keys) -> list:
+    ...
+
+
 def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
     try:
         query_address = Address.get_Address_for_query(user_input)
     except Address.NoCloseMatchError as err:
-        raise Address.NoCloseMatchError(f"Address {user_input} not found in San Francisco") from err
+        raise Address.NoCloseMatchError(
+            f"Address {user_input} not found in San Francisco"
+        ) from err
     except Address.AddressError as err:
         raise Address.AddressError(
             f"Invalid address {user_input} entered, ensure proper street address is given."
         ) from err
 
-    # namedtuple address_key to keep addresses and species keys together for later result formatting
-    # SUGGEST may make more sense as dict(?)
-    address_key = namedtuple("AddressKeys", ["address", "key"])
-    address_keys = []
-    species_keys = None
 
     # test connection to tree database
     try:
@@ -105,15 +109,17 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     except FileNotFoundError as err:
         raise err
 
-    # get all tree_ids at the query address
+    address_species_keys = {}
+
+    # address_keys = get_address_keys(query_address.street_number, query_address.street_address, species_keys)
+
+    # get all tree_ids at the query address and store in {street_address: [key1, key2, ...]}
     species_keys = get_species_keys(query_address)
 
-    # if there are trees there, make address/tree_id tuple (may change to dict)
-    if not species_keys is None:
-        for species_key in species_keys:
-            address_keys.append(address_key(query_address.street_address, species_key))
+    if species_keys:
+        address_species_keys.update({query_address.street_address: species_keys})
 
-    if species_keys is None and check_nearby:
+    if not species_keys and check_nearby:
         # if no trees at given address, will look next door (+2 or -2 street number i.e. 1470 and 1466 if given 1468)
         logging.warning("Couldn't find trees at given address, looking nearby...")
         steps = [-2, 4]
@@ -121,30 +127,31 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
         for step in steps:
             query_address.street_number = int(query_address.street_number) + step
             species_keys = get_species_keys(query_address)
-            if not species_keys is None:
+            if species_keys:
                 for species_key in species_keys:
-                    address_keys.append(
-                        address_key(query_address.street_address, species_key)
-                    )
+                    address_species_keys.update({query_address.street_address: species_keys})
 
-    if len(address_keys) == 0:
-        raise NoTreeFoundError(f"Can't find any trees near entered street address {user_input}")
+    if len(address_species_keys) == 0:
+        raise NoTreeFoundError(
+            f"Can't find any trees near entered street address {user_input}"
+        )
 
     # create an empty results dataframe with number of rows as address_keys
     results = pd.DataFrame(
-        columns=["qSpecies", "urlPath", "queried_address"],
-        index=[i for i in range(len(address_keys))],
+        columns=["qSpecies", "urlPath", "queried_address"]
     )
     # save results to df
-    for i, item in enumerate(address_keys):
-        qSpecie, urlPath = get_species(item.key)
-        results.loc[i] = {
-            "qSpecies": qSpecie,
-            "urlPath": urlPath,
-            "queried_address": item.address.title(),
-        }
+    for address, species_keys in address_species_keys.items():
+        for specie_key in species_keys:
+            qSpecie, urlPath = get_species(specie_key)
+            results.loc[len(results.index)] = {
+                "qSpecies": qSpecie,
+                "urlPath": urlPath,
+                "queried_address": address.title(),
+            }
 
     return results
+
 
 def create_output_dict(results: pd.DataFrame) -> list[dict]:
     """Creates a formatted list of string messages from main()'s results df."""
@@ -186,26 +193,29 @@ def get_trees(user_input: str) -> list[str]:
         raise err
     except Exception as err:
         raise err
-
     return create_output_dict(tree_df)
+
 
 def create_message(tree: dict) -> str:
     """Creates formatted messages for each tree."""
 
-    if tree['common_name'] != '':
-        first_line = f"{tree['common_name'].title()} ({tree['scientific_name'].title()})"
+    if tree["common_name"] != "":
+        first_line = (
+            f"{tree['common_name'].title()} ({tree['scientific_name'].title()})"
+        )
     else:
         first_line = f"{tree['scientific_name'].title()}"
 
-    number = tree['count']
+    number = tree["count"]
     if number > 1:
         first_line = first_line + f": {tree['count']}"
 
-    if tree['urlPath'] != 0:
+    if tree["urlPath"] != 0:
         second_line = f"https://selectree.calpoly.edu/tree-detail/{tree['urlPath']}\n"
         return "\n".join([first_line, second_line])
 
     return first_line.append("\n")
+
 
 def format_messages(results: dict) -> list[str]:
     """Creates a formatted list of string messages from SF_Tree_Identifer dict output."""
@@ -225,6 +235,7 @@ def format_messages(results: dict) -> list[str]:
                 messages.append(create_message(tree))
 
     return messages
+
 
 def print_trees(trees: dict) -> list[str]:
     messages = format_messages(trees)
