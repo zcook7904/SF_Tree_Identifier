@@ -9,11 +9,11 @@ import pandas as pd
 # adds python module to path
 path_to_append = os.path.join('.', 'src')
 sys.path.append(path_to_append)
-from SF_Tree_Identifier import SF_Tree_Identifier, Address
+from SF_Tree_Identifier import identify_trees, Address
 
 logging.basicConfig(level=logging.ERROR)
 
-number=1000
+number=100
 test_addresses = ['1470 Valencia St', '1470 valenci street', '1468 Valencia St', '900 Brotherhood Way', '1204 19th St']
 i = 0
 def main():
@@ -25,9 +25,9 @@ def main():
     for i, address in enumerate(test_addresses):
         filename =  f"{address.replace(' ', '_')}_{datetime.now().isoformat(timespec='minutes').replace(':', '-')}.prof"
         pathname = os.path.join(file_dir, 'profiles', filename)
-        cProfile.run('SF_Tree_Identifier.main(test_addresses[i])', filename=pathname)
+        cProfile.run('identify_trees.main(test_addresses[i])', filename=pathname)
 
-        time = timeit(lambda: SF_Tree_Identifier.main(address), number=number) / number #s
+        time = timeit(lambda: identify_trees.main(address), number=number) / number #s
         print(f'{address} - time: {time: .5f}s')
         benchmarks.loc[0,address] = time
 

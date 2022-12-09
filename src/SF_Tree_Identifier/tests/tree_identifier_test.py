@@ -56,6 +56,16 @@ class PoorInputTestCase(unittest.TestCase):
         self.assertEqual(True, True)  # add assertion here
 
 
+class TotalTreeTestCase(unittest.TestCase):
+    def test_one_tree(self):
+        address_species_keys = {"1470 Valencia St": ["2"]}
+        self.assertTrue(identify_trees.calculate_total_trees(address_species_keys) == 1)
+
+    def test_two_trees(self):
+        address_species_keys = {"1470 Valencia St": ["2", "25"]}
+        self.assertTrue(identify_trees.calculate_total_trees(address_species_keys) == 2)
+
+
 class GetTreesTestCase(unittest.TestCase):
     def test_valencia_address(self):
         user_input = "1470 Valencia St"
@@ -121,7 +131,7 @@ class GetTreesTestCase(unittest.TestCase):
         self.assertTrue(identify_trees.get_trees(user_input) == intended_result)
 
     def test_no_tree_address(self):
-        user_input = '1466 Valencia St'
+        user_input = "1466 Valencia St"
         with self.assertRaises(identify_trees.NoTreeFoundError):
             identify_trees.get_trees(user_input)
 
