@@ -31,8 +31,8 @@ def main():
     elif args.address != '':
         # prints found trees
         address = ' '.join(args.address)
-        returned_trees = SF_Tree_Identifier.get_trees(address)
-        SF_Tree_Identifier.print_trees(returned_trees)
+        returned_trees = identify_trees.get_trees(address)
+        identify_trees.print_trees(returned_trees)
 
     else:
         #displays help message if no arg given
