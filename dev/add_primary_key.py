@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-os.chdir('..')
+os.chdir("..")
 path = f"src//SF_Tree_Identifier//data//SF_trees.db"
 
 con = sqlite3.connect(path)
