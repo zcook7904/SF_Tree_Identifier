@@ -21,6 +21,7 @@ def create_address_query(street_address: str) -> str:
     query = f"""
         SELECT qSpecies
         FROM addresses
+        INDEXED BY "qAddress_index"
         WHERE qAddress = '{street_address}'"""
     return query
 

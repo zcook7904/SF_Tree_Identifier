@@ -87,7 +87,7 @@ class GetTreesTestCase(unittest.TestCase):
             "900 Brotherhood Way": [
                 {
                     "urlPath": "476",
-                    "count": 3,
+                    "count": 4,
                     "scientific_name": "Cupressus macrocarpa",
                     "common_name": "Monterey Cypress",
                 },
@@ -105,7 +105,7 @@ class GetTreesTestCase(unittest.TestCase):
                 },
             ]
         }
-
+        print(identify_trees.get_trees(user_input))
         self.assertTrue(identify_trees.get_trees(user_input) == intended_result)
 
     def test_valencia_address(self):

@@ -7,7 +7,7 @@ import time
 os.chdir(os.path.dirname(__file__))
 TREE_LIST_PATH = os.path.join("..", "Cleaned_Street_Tree_List.csv")
 MAPPED_SPECIES_PATH = os.path.join("..", "mapped_species.csv")
-DB_PATH = os.path.join("..", "test_db.db")
+DB_PATH = os.path.join("..", "SF_trees.db")
 
 
 def load_original_data(path: str) -> pd.DataFrame:
@@ -59,7 +59,6 @@ def get_db_indicies(db_path: str) -> list[str]:
     return result_list
 
 
-
 def make_table(
     df: pd.DataFrame, schema: str, table_name: str, db_path: str, overwrite: bool = False
 ) -> None:
@@ -87,7 +86,7 @@ def make_species_table(species_df: pd.DataFrame, db_path: str) -> None:
     Uses the index as the primary key.
     The index number also corresponds to the qSpecies column in the corresponding address/tree table."""
 
-    table_name = 'species2'
+    table_name = 'species'
     schema = f"""
     CREATE TABLE "{table_name}" (
     "index" INTEGER PRIMARY KEY NOT NULL,
@@ -119,8 +118,8 @@ def make_address_table(address_df: pd.DataFrame, db_path: str, sort: bool = True
 def make_address_index(db_path: str) -> None:
     """Makes an index of the qAddress column of the address table."""
     query = """
-    CREATE INDEX "qddress_index"
-    ON "ddresses" ("qAddress")
+    CREATE INDEX "qAddress_index"
+    ON "addresses" ("qAddress")
     """
 
     with sqlite3.connect(db_path) as con:
@@ -170,9 +169,11 @@ def main():
     # clean up addresses
     addresses = addresses.astype({"qSpecies": "uint16"})
 
+    addresses.to_csv('table_making.csv')
+
     make_species_table(species, DB_PATH)
     make_address_table(addresses, DB_PATH)
-    make_address_index(DB_PATH)
+    # make_address_index(DB_PATH)
 
 
 if __name__ == "__main__":
