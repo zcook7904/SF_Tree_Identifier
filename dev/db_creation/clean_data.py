@@ -85,6 +85,22 @@ def remove_stair_addresses(tree_list: pd.DataFrame) -> pd.DataFrame:
     """Remove 'stairway' addresses from tree list."""
     return tree_list.loc[~tree_list.qAddress.str.contains("STAIRWAY")]
 
+def clean_addresses(tree_list: pd.DataFrame) -> pd.DataFrame:
+    """Removes non-numeric portions of the street number and removes 'revised' from street names."""
+    tree_list.qAddress = tree_list.qAddress.str.lower()
+
+    split_street_names = tree_list.qAddress.str.split(' ', n=1, expand=True).rename({0: 'street_number', 1: 'street_name'},
+                                                                               axis=1)
+
+    # get only begining number part of street number
+    split_street_names.street_number = split_street_names.street_number.str.extract(r'(^[0-9]+)', expand=False)
+
+    # remove all instances of 'revised' from street name and strip outside spaces
+    split_street_names.street_name = split_street_names.street_name.dropna().str.replace(r'\b(revised|\(revised\))\b', '').str.strip()
+
+    # set tree_list qAddress to cleaned address
+    tree_list.qAddress = split_street_names.street_number.str.cat(split_street_names.street_name, ' ')
+    return tree_list
 
 def main():
     original_data = load_original_data(ORIGINAL_PATH)
@@ -112,6 +128,7 @@ def main():
     data.qAddress = data.qAddress.str.replace("[(]?revised[)]?", "", regex=True)
 
     data = remove_stair_addresses(data)
+    data = clean_addresses(data)
 
     data.to_csv(CLEANED_PATH)
     print(f"Cleaned Street Tree list saved at {os.path.abspath(CLEANED_PATH)}")
