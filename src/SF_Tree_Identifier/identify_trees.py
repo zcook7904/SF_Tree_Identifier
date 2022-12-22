@@ -267,7 +267,7 @@ def format_messages(results: dict) -> list[str]:
             address_line = f"Trees at {address}:\n"
             messages.append(address_line + create_message(results[address][0]))
 
-            for tree in results[address]:
+            for tree in results[address][1:]:
                 messages.append(create_message(tree))
 
     return messages
