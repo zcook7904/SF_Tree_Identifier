@@ -13,7 +13,7 @@ from SF_Tree_Identifier import identify_trees, Address
 
 logging.basicConfig(level=logging.ERROR)
 
-number=1000
+number=100
 test_addresses = ['1470 Valencia St', '1470 valenci street', '1468 Valencia St', '900 Brotherhood Way', '1204 19th St']
 i = 0
 def main():

@@ -140,6 +140,7 @@ def main():
 
     data = remove_stair_addresses(data)
     data = clean_addresses(data)
+    data = data.dropna()
 
     data.to_csv(CLEANED_PATH)
     print(f"Cleaned Street Tree list saved at {os.path.abspath(CLEANED_PATH)}")
