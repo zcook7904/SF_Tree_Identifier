@@ -194,9 +194,14 @@ def get_species_keys(street_number: int, street_name:str):
 
     return trees
 
-def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
+def main(user_input: str, check_nearby: bool = True, tree_dict: dict = None) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
+
+    if not tree_dict:
+        glob TREE_DICT
+
+
     try:
         query_address = Address.get_Address_for_query(user_input)
     except Address.NoCloseMatchError as err:
@@ -208,23 +213,15 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
             f"Invalid address {user_input} entered, ensure proper street address is given."
         ) from err
 
-    # test connection to tree database
+
     try:
-        check_db_connection()
-    except FileNotFoundError as err:
-        raise err
-
-    address_species_keys = get_address_species_keys(query_address.street_address)
-
-    if not address_species_keys and check_nearby:
-        # if no trees at given address, will look next door (+2 or -2 street number i.e. 1470 and 1466 if given 1468)
-        logging.warning("Couldn't find trees at given address, looking nearby...")
-        address_species_keys = get_nearby_species_keys(query_address)
-
-    if not address_species_keys:
+        address_species_keys = get_nearby_species_keys(query_address.street_number, query_address.street_name)
+    except NoTreeFoundError:
         raise NoTreeFoundError(
             f"Can't find any trees near entered street address {user_input}"
         )
+    except Address.AddressError as err:
+        raise(err)
 
     return address_species_keys_to_dataframe(address_species_keys)
 
@@ -252,7 +249,7 @@ def create_output_dict(results: pd.DataFrame) -> list[dict]:
     return tree_dict
 
 
-def get_trees(user_input: str) -> list[str]:
+def get_trees(user_input: str, tree_dict = None, species_dict = None) -> list[str]:
     """Takes a string address from a user and returns a dictionary of the format:
     {address_1: [{
                 common_name: str,
@@ -262,6 +259,11 @@ def get_trees(user_input: str) -> list[str]:
                 },{}...]
      address_2: [{}, ...]
      }."""
+
+    if tree_dict:
+        TREE_DICT = tree_dict
+    else:
+        TREE_DICT = load_tree_dict(SF_TREES_PATH)
 
     try:
         tree_df = main(user_input)
