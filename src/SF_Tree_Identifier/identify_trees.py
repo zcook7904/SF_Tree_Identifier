@@ -8,7 +8,11 @@ from SF_Tree_Identifier import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
+SF_TREES_PATH = os.path.join(DATA_DIR, 'SF_Trees.pkl')
+SPECIES_PATH = os.path.join(DATA_DIR, 'species_dict.pkl')
 
+ADDRESS_BUFFER = 11
+SEARCH_NEARBY = True
 
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
@@ -152,6 +156,43 @@ def address_species_keys_to_dataframe(address_species_keys: dict) -> pd.DataFram
 
     return results
 
+def get_species_keys(street_number: int, street_name:str):
+    """Gets all of the species keys """
+    address_buffer = 11
+    try:
+        trees_on_street = TREES[street_name]
+    except KeyError:
+        raise Address.AddressError(f"Invalid {street_name} entered, ensure proper street address is given.")
+
+
+    trees = {}
+
+    try:
+        trees[street_num] = trees_on_street[street_number]
+    except KeyError:
+        if not SEARCH_NEARBY:
+            raise NoTreeFoundError
+
+        max_street_num = street_num + ADDRESS_BUFFER
+        min_street_num = street_num - ADDRESS_BUFFER
+        original_street_num = street_num
+
+        while street_num <= max_street_num:
+            street_num = street_num + 2
+            try:
+                trees[street_num] = trees_on_street[street_num]
+                break
+            except KeyError:
+                pass
+        while street_num >= min_street_num:
+            street_num = street_num - 2
+            try:
+                trees[street_num] = trees_on_street[street_num]
+                break
+            except KeyError:
+                raise NoTreeFoundError
+
+    return trees
 
 def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""

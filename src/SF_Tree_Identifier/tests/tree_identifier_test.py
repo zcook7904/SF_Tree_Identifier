@@ -21,34 +21,10 @@ class DataTestCase(unittest.TestCase):
     def test_data_dir_exists(self):
         self.assertTrue(os.path.exists(identify_trees.DATA_DIR))
 
-    def test_street_names_exist(self):
-        data_files = os.listdir(identify_trees.DATA_DIR)
-        self.assertTrue("street_names.json" in data_files)
-
     def test_street_types(self):
         data_files = os.listdir(identify_trees.DATA_DIR)
         self.assertTrue("street_types.json" in data_files)
 
-    def test_db_exists(self):
-        data_files = os.listdir(identify_trees.DATA_DIR)
-        _, db_file_name = os.path.split(identify_trees.DB_LOCATION)
-        self.assertTrue(db_file_name in data_files)
-
-    def test_db_connects(self):
-        def check_connection():
-            query = f"""
-            SELECT qSpecies
-            FROM addresses
-            WHERE qAddress = '1470 Valencia St'"""
-
-            try:
-                identify_trees.query_db(query)
-                return True
-            except Exception as err:
-                logging.error(err)
-                return False
-
-        self.assertTrue(check_connection)
 
 
 class PoorInputTestCase(unittest.TestCase):
