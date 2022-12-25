@@ -8,20 +8,22 @@ from SF_Tree_Identifier import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
-SF_TREES_PATH = os.path.join(DATA_DIR, 'SF_Trees.pkl')
-SPECIES_PATH = os.path.join(DATA_DIR, 'species_dict.pkl')
+SF_TREES_PATH = os.path.join(DATA_DIR, "SF_Trees.pkl")
+SPECIES_PATH = os.path.join(DATA_DIR, "species_dict.pkl")
 
 ADDRESS_BUFFER = 11
 SEARCH_NEARBY = True
+
 
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
 
     pass
 
+
 def load_tree_dict(dict_path: str) -> dict:
-    with open(dict_path, 'wb') as fp:
-            return pickle.load(fp)
+    with open(dict_path, "wb") as fp:
+        return pickle.load(fp)
 
 
 def create_address_query(street_address: str) -> str:
@@ -160,14 +162,16 @@ def address_species_keys_to_dataframe(address_species_keys: dict) -> pd.DataFram
 
     return results
 
-def get_species_keys(street_number: int, street_name:str):
-    """Gets all of the species keys """
+
+def get_species_keys(street_number: int, street_name: str):
+    """Gets all of the species keys"""
     address_buffer = 11
     try:
         trees_on_street = TREES[street_name]
     except KeyError:
-        raise Address.AddressError(f"Invalid {street_name} entered, ensure proper street address is given.")
-
+        raise Address.AddressError(
+            f"Invalid {street_name} entered, ensure proper street address is given."
+        )
 
     trees = {}
 
@@ -198,6 +202,7 @@ def get_species_keys(street_number: int, street_name:str):
 
     return trees
 
+
 def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
@@ -215,15 +220,16 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
             f"Invalid address {user_input} entered, ensure proper street address is given."
         ) from err
 
-
     try:
-        address_species_keys = get_nearby_species_keys(query_address.street_number, query_address.street_name)
+        address_species_keys = get_nearby_species_keys(
+            query_address.street_number, query_address.street_name
+        )
     except NoTreeFoundError:
         raise NoTreeFoundError(
             f"Can't find any trees near entered street address {user_input}"
         )
     except Address.AddressError as err:
-        raise(err)
+        raise (err)
 
     return address_species_keys_to_dataframe(address_species_keys)
 
@@ -251,7 +257,7 @@ def create_output_dict(results: pd.DataFrame) -> list[dict]:
     return tree_dict
 
 
-def get_trees(user_input: str, tree_dict = None, species_dict = None) -> list[str]:
+def get_trees(user_input: str, tree_dict=None, species_dict=None) -> list[str]:
     """Takes a string address from a user and returns a dictionary of the format:
     {address_1: [{
                 common_name: str,

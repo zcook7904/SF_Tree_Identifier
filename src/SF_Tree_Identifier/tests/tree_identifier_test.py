@@ -26,7 +26,6 @@ class DataTestCase(unittest.TestCase):
         self.assertTrue("street_types.json" in data_files)
 
 
-
 class PoorInputTestCase(unittest.TestCase):
     def test_something(self):
         self.assertEqual(True, True)  # add assertion here
