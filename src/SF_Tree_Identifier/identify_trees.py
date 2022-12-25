@@ -19,6 +19,10 @@ class NoTreeFoundError(Exception):
 
     pass
 
+def load_tree_dict(dict_path: str) -> dict:
+    with open(dict_path, 'wb') as fp:
+            return pickle.load(fp)
+
 
 def create_address_query(street_address: str) -> str:
     """Creates the sql query to retrieve the qSpecies keys for a specfic address. Returns the query as a string."""
@@ -194,13 +198,11 @@ def get_species_keys(street_number: int, street_name:str):
 
     return trees
 
-def main(user_input: str, check_nearby: bool = True, tree_dict: dict = None) -> pd.DataFrame | dict:
+def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
-
-    if not tree_dict:
-        glob TREE_DICT
-
+    if not TREE_DICT:
+        TREE_DICT = load_tree_dict(SF_TREES_PATH)
 
     try:
         query_address = Address.get_Address_for_query(user_input)
