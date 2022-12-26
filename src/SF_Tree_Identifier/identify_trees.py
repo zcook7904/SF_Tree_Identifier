@@ -1,18 +1,19 @@
 import logging
 import sqlite3
 import os
-
+import pickle
 import pandas as pd
 
 from SF_Tree_Identifier import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
-SF_TREES_PATH = os.path.join(DATA_DIR, "SF_Trees.pkl")
+SF_TREES_PATH = os.path.join(DATA_DIR, "SF_trees.pkl")
 SPECIES_PATH = os.path.join(DATA_DIR, "species_dict.pkl")
 
-ADDRESS_BUFFER = 11
+ADDRESS_BUFFER = 3
 SEARCH_NEARBY = True
+TREE_DICT = None
 
 
 class NoTreeFoundError(Exception):
@@ -22,7 +23,7 @@ class NoTreeFoundError(Exception):
 
 
 def load_tree_dict(dict_path: str) -> dict:
-    with open(dict_path, "wb") as fp:
+    with open(dict_path, "rb") as fp:
         return pickle.load(fp)
 
 
@@ -137,7 +138,9 @@ def calculate_total_trees(address_species_keys: dict) -> int:
     return total
 
 
-def address_species_keys_to_dataframe(address_species_keys: dict) -> pd.DataFrame:
+def address_species_keys_to_dataframe(
+    address_species_keys: dict, street_name: str
+) -> pd.DataFrame:
     """Converts the address_species_keys dict to a pandas dataframe."""
     # get total number of trees for empty df
     total_trees = calculate_total_trees(address_species_keys)
@@ -150,13 +153,14 @@ def address_species_keys_to_dataframe(address_species_keys: dict) -> pd.DataFram
 
     # save results to df
     i = 0
-    for address, species_keys in address_species_keys.items():
+    for street_number, species_keys in address_species_keys.items():
+        address = Address.Address(str(street_number) + " " + street_name)
         for specie_key in species_keys:
             qSpecie, urlPath = get_species(specie_key)
             results.loc[i] = {
                 "qSpecies": qSpecie,
                 "urlPath": urlPath,
-                "queried_address": address.title(),
+                "queried_address": address.street_address.title(),
             }
             i += 1
 
@@ -165,9 +169,9 @@ def address_species_keys_to_dataframe(address_species_keys: dict) -> pd.DataFram
 
 def get_species_keys(street_number: int, street_name: str):
     """Gets all of the species keys"""
-    address_buffer = 11
+
     try:
-        trees_on_street = TREES[street_name]
+        trees_on_street = TREE_DICT[street_name]
     except KeyError:
         raise Address.AddressError(
             f"Invalid {street_name} entered, ensure proper street address is given."
@@ -176,29 +180,34 @@ def get_species_keys(street_number: int, street_name: str):
     trees = {}
 
     try:
-        trees[street_num] = trees_on_street[street_number]
+        trees[street_number] = trees_on_street[street_number]
     except KeyError:
         if not SEARCH_NEARBY:
             raise NoTreeFoundError
 
-        max_street_num = street_num + ADDRESS_BUFFER
-        min_street_num = street_num - ADDRESS_BUFFER
-        original_street_num = street_num
+        max_street_number = street_number + ADDRESS_BUFFER
+        min_street_number = street_number - ADDRESS_BUFFER
+        original_street_number = street_number
 
-        while street_num <= max_street_num:
-            street_num = street_num + 2
+        while street_number < max_street_number:
+            street_number += 2
             try:
-                trees[street_num] = trees_on_street[street_num]
+                trees[street_number] = trees_on_street[street_number]
                 break
             except KeyError:
                 pass
-        while street_num >= min_street_num:
-            street_num = street_num - 2
+
+        street_number = original_street_number
+        while street_number > min_street_number:
+            street_number -= 2
             try:
-                trees[street_num] = trees_on_street[street_num]
+                trees[street_number] = trees_on_street[street_number]
                 break
             except KeyError:
-                raise NoTreeFoundError
+                pass
+
+    if not trees:
+        raise NoTreeFoundError
 
     return trees
 
@@ -206,6 +215,7 @@ def get_species_keys(street_number: int, street_name: str):
 def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
+    global TREE_DICT
     if not TREE_DICT:
         TREE_DICT = load_tree_dict(SF_TREES_PATH)
 
@@ -221,8 +231,8 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
         ) from err
 
     try:
-        address_species_keys = get_nearby_species_keys(
-            query_address.street_number, query_address.street_name
+        address_species_keys = get_species_keys(
+            int(query_address.street_number), query_address.street_name
         )
     except NoTreeFoundError:
         raise NoTreeFoundError(
@@ -231,7 +241,9 @@ def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
     except Address.AddressError as err:
         raise (err)
 
-    return address_species_keys_to_dataframe(address_species_keys)
+    return address_species_keys_to_dataframe(
+        address_species_keys, query_address.street_name
+    )
 
 
 def create_output_dict(results: pd.DataFrame) -> list[dict]:
@@ -267,6 +279,7 @@ def get_trees(user_input: str, tree_dict=None, species_dict=None) -> list[str]:
                 },{}...]
      address_2: [{}, ...]
      }."""
+    global TREE_DICT
 
     if tree_dict:
         TREE_DICT = tree_dict
