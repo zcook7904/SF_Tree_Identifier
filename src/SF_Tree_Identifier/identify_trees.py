@@ -212,12 +212,16 @@ def get_species_keys(street_number: int, street_name: str):
     return trees
 
 
-def main(user_input: str, check_nearby: bool = True) -> pd.DataFrame | dict:
+def main(user_input: str, check_nearby: bool = True, tree_dict = None) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
     global TREE_DICT
-    if not TREE_DICT:
+
+    if not TREE_DICT and not tree_dict:
         TREE_DICT = load_tree_dict(SF_TREES_PATH)
+    elif not TREE_DICT and tree_dict:
+        TREE_DICT = tree_dict
+
 
     try:
         query_address = Address.get_Address_for_query(user_input)
