@@ -1,5 +1,3 @@
-import logging
-import sqlite3
 import os
 import pickle
 import pandas as pd
@@ -7,7 +5,6 @@ import pandas as pd
 from SF_Tree_Identifier import Address
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-DB_LOCATION = os.path.join(DATA_DIR, "SF_trees.db")
 SF_TREES_PATH = os.path.join(DATA_DIR, "SF_trees.pkl")
 SPECIES_PATH = os.path.join(DATA_DIR, "species_dict.pkl")
 
@@ -20,114 +17,10 @@ SPECIES_DICT = None
 class NoTreeFoundError(Exception):
     """Raised if no tree is found at the given address."""
 
-    pass
-
 
 def load_dict(dict_path: str) -> dict:
     with open(dict_path, "rb") as fp:
         return pickle.load(fp)
-
-
-def create_address_query(street_address: str) -> str:
-    """Creates the sql query to retrieve the qSpecies keys for a specfic address. Returns the query as a string."""
-    query = f"""
-        SELECT qSpecies
-        FROM addresses
-        WHERE qAddress = '{street_address}'"""
-    return query
-
-
-def create_species_query(key: str) -> str:
-    """Creates the sql query to retrieve the species and URL path for the species key. Returns the query as a string."""
-    query = f"""
-        SELECT qSpecies, urlPath
-        FROM species
-        WHERE "index" = {key}"""
-    return query
-
-
-def check_db_connection() -> bool:
-    """Checks if the SF_Trees database exists. Returns True if so, or raises a FileNotFoundError if not."""
-    data_dir = os.listdir(DATA_DIR)
-    _, db_name = os.path.split(DB_LOCATION)
-    if db_name in data_dir:
-        return True
-
-    raise FileNotFoundError(f"Can't find the tree database at {DB_LOCATION}")
-
-
-def query_db(query: str, fetchall: bool = True):
-    """General function to query the sqlite3 database at DB_LOCATION. Returns the results if they are found or None if there are none."""
-    con = sqlite3.connect(DB_LOCATION)
-    cur = con.cursor()
-    result = cur.execute(query)
-
-    if result:
-        if fetchall:
-            result = result.fetchall()
-        else:
-            result = result.fetchone()
-
-    con.close()
-    return result
-
-
-def get_species_keys(street_address: str) -> list[str]:
-    """Queries the sqlite3 database for the species keys found at the given address.
-    Returns a list of the keys found keys. List will be empty if none are found"""
-    address_query = create_address_query(street_address)
-    results = query_db(address_query)
-    keys = []
-
-    if results:
-        for result in results:
-            keys.append(str(result[0]))
-
-    return keys
-
-
-def get_species(key: str) -> tuple | None:
-    """Queries the species table for the species matching the passed key.
-    Returns the tuple (qSpecies, urlPath) if a species is found and returns None if none are found."""
-    species_query = create_species_query(key)
-    result = query_db(species_query, fetchall=False)
-
-    if result:
-        result = result  # should only be one species per key
-        qSpecies = result[0]
-        urlPaths = str(result[1])
-        return qSpecies, urlPaths
-
-    return None
-
-
-def get_address_species_keys(street_address: str) -> dict:
-    """Returns a dict in the form of {street_address: [key1, key2, ...]} for the given street address.
-    Will return an empty dict if no trees are found at that address."""
-    address_species_keys = {}
-    species_keys = get_species_keys(street_address)
-    # get all tree_ids at the query address and store in
-
-    if species_keys:
-        address_species_keys.update({street_address: species_keys})
-
-    return address_species_keys
-
-
-def get_nearby_species_keys(query_address: Address.Address) -> dict:
-    """Queries address nearby (-2 and +2 of the street number) to the given address.
-    Will return a dict with TWO addresses if both nearby address have trees.
-    Will return an empty dict if none are found at either."""
-    address_species_keys = {}
-    steps = [-2, 4]
-
-    for step in steps:
-        query_address.street_number = int(query_address.street_number) + step
-        address_species_keys.update(
-            get_address_species_keys(query_address.street_address)
-        )
-
-    return address_species_keys
 
 
 def calculate_total_trees(address_species_keys: dict) -> int:
@@ -149,7 +42,7 @@ def address_species_keys_to_dataframe(
     # create an empty results dataframe with number of rows as address_keys
     results = pd.DataFrame(
         columns=["qSpecies", "urlPath", "queried_address"],
-        index=[i for i in range(total_trees)],
+        index=list(range(total_trees)),
     )
 
     # save results to df
@@ -212,16 +105,20 @@ def get_species_keys(street_number: int, street_name: str):
 
     return trees
 
+
 def get_species(species_key: str) -> tuple:
     """uses the passed species key to retrieve the url path and species name from the species dictionary.
     Returns (qSpecies, urlPath)"""
 
     try:
-        return SPECIES_DICT[species_key]['qSpecies'], str(SPECIES_DICT[species_key]['urlPath'])
+        return SPECIES_DICT[species_key]["qSpecies"], str(
+            SPECIES_DICT[species_key]["urlPath"]
+        )
     except KeyError as err:
         raise KeyError(err)
 
-def main(user_input: str, check_nearby: bool = True, tree_dict = None, species_dict = None) -> pd.DataFrame | dict:
+
+def main(user_input: str, tree_dict=None, species_dict=None) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
     global TREE_DICT
@@ -257,7 +154,7 @@ def main(user_input: str, check_nearby: bool = True, tree_dict = None, species_d
             f"Can't find any trees near entered street address {user_input}"
         )
     except Address.AddressError as err:
-        raise (err)
+        raise err
 
     return address_species_keys_to_dataframe(
         address_species_keys, query_address.street_name
