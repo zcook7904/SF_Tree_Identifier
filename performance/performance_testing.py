@@ -22,14 +22,15 @@ def main():
 
     benchmarks.loc[0, 'datetime'] = datetime.now().isoformat()
 
-    tree_dict = identify_trees.load_tree_dict(identify_trees.SF_TREES_PATH)
+    tree_dict = identify_trees.load_dict(identify_trees.SF_TREES_PATH)
+    species_dict = identify_trees.load_dict(identify_trees.SPECIES_PATH)
 
     for i, address in enumerate(test_addresses):
         filename =  f"{address.replace(' ', '_')}_{datetime.now().isoformat(timespec='minutes').replace(':', '-')}.prof"
         pathname = os.path.join(file_dir, 'profiles', filename)
-        cProfile.runctx('identify_trees.main(test_addresses[i], tree_dict=tree_dict)', globals=globals(), locals=locals(), filename=pathname)
+        cProfile.runctx('identify_trees.main(test_addresses[i], tree_dict=tree_dict, species_dict=species_dict)', globals=globals(), locals=locals(), filename=pathname)
 
-        time = timeit(lambda: identify_trees.main(address, tree_dict=tree_dict), number=number) / number #s
+        time = timeit(lambda: identify_trees.main(address, tree_dict=tree_dict, species_dict=species_dict), number=number) / number #s
         print(f'{address} - time: {time: .5f}s')
         benchmarks.loc[0,address] = time
 

@@ -14,6 +14,7 @@ SPECIES_PATH = os.path.join(DATA_DIR, "species_dict.pkl")
 ADDRESS_BUFFER = 3
 SEARCH_NEARBY = True
 TREE_DICT = None
+SPECIES_DICT = None
 
 
 class NoTreeFoundError(Exception):
@@ -22,7 +23,7 @@ class NoTreeFoundError(Exception):
     pass
 
 
-def load_tree_dict(dict_path: str) -> dict:
+def load_dict(dict_path: str) -> dict:
     with open(dict_path, "rb") as fp:
         return pickle.load(fp)
 
@@ -211,17 +212,30 @@ def get_species_keys(street_number: int, street_name: str):
 
     return trees
 
+def get_species(species_key: str) -> tuple:
+    """uses the passed species key to retrieve the url path and species name from the species dictionary.
+    Returns (qSpecies, urlPath)"""
 
-def main(user_input: str, check_nearby: bool = True, tree_dict = None) -> pd.DataFrame | dict:
+    try:
+        return SPECIES_DICT[species_key]['qSpecies'], str(SPECIES_DICT[species_key]['urlPath'])
+    except KeyError as err:
+        raise KeyError(err)
+
+def main(user_input: str, check_nearby: bool = True, tree_dict = None, species_dict = None) -> pd.DataFrame | dict:
     """Main function that queries tree species from the given user_input. Returns a panda dataframe with the results."""
     # create an Address object from the given user input. Raises an exception if the input is not appropriate for the DB.
     global TREE_DICT
+    global SPECIES_DICT
 
     if not TREE_DICT and not tree_dict:
-        TREE_DICT = load_tree_dict(SF_TREES_PATH)
+        TREE_DICT = load_dict(SF_TREES_PATH)
     elif not TREE_DICT and tree_dict:
         TREE_DICT = tree_dict
 
+    if not SPECIES_DICT and not species_dict:
+        SPECIES_DICT = load_dict(SPECIES_PATH)
+    elif not SPECIES_DICT and species_dict:
+        SPECIES_DICT = species_dict
 
     try:
         query_address = Address.get_Address_for_query(user_input)
@@ -288,7 +302,7 @@ def get_trees(user_input: str, tree_dict=None, species_dict=None) -> list[str]:
     if tree_dict:
         TREE_DICT = tree_dict
     else:
-        TREE_DICT = load_tree_dict(SF_TREES_PATH)
+        TREE_DICT = load_dict(SF_TREES_PATH)
 
     try:
         tree_df = main(user_input)
