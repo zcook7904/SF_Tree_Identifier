@@ -195,11 +195,17 @@ def get_trees(user_input: str, tree_dict=None, species_dict=None) -> list[str]:
      address_2: [{}, ...]
      }."""
     global TREE_DICT
+    global SPECIES_DICT
 
     if tree_dict:
         TREE_DICT = tree_dict
     else:
         TREE_DICT = load_dict(SF_TREES_PATH)
+
+    if species_dict:
+        SPECIES_DICT = species_dict
+    else:
+        SPECIES_DICT = load_dict(SPECIES_PATH)
 
     try:
         tree_df = main(user_input)
